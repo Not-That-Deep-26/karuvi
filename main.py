@@ -53,11 +53,13 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 import deps
 import get_tree
 from pointers import GlobalIndex
+from repo_graph import RepoGraphBuilder
 from returns import (
     Module,
     class_to_dict,
@@ -482,3 +484,101 @@ def _walk_scope(scope, name: str):
         if found is not None:
             return found
     return None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Whole-Repository Graph & Visualisation Endpoints
+# ──────────────────────────────────────────────────────────────────────────────
+
+@app.get(
+    "/",
+    summary="Karuvi index & status",
+    description="Welcome endpoint with links to documentation and visualization.",
+)
+def root():
+    return {
+        "title": "Karuvi Stateful Daemon",
+        "status": "ready" if PROJECT_ROOT else "uninitialized",
+        "project_root": str(PROJECT_ROOT) if PROJECT_ROOT else None,
+        "files_loaded": len(PARSED),
+        "docs_url": "/docs",
+        "visualize_url": "/visualize" if PROJECT_ROOT else "Initialize first via POST /init",
+        "graph_url": "/graph" if PROJECT_ROOT else "Initialize first via POST /init",
+        "export_url": "/export" if PROJECT_ROOT else "Initialize first via POST /init",
+    }
+
+
+@app.get(
+    "/graph",
+    summary="Whole-repository dependency graph",
+    description="Return nodes, edges, cross-references, and metrics for the entire repository.",
+)
+def get_repo_graph():
+    _require_project()
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    return builder.to_dict()
+
+
+@app.get(
+    "/export",
+    summary="Export full repository analysis (JSON)",
+    description="Return full repository metadata, dependency graph, and complete AST analysis for all modules.",
+)
+def export_repo():
+    _require_project()
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    modules_dump = {
+        rel_key: module_to_dict(mod)
+        for rel_key, mod in PARSED.items()
+    }
+    return {
+        "repository": str(PROJECT_ROOT),
+        "graph": builder.to_dict(),
+        "modules": modules_dump,
+    }
+
+
+@app.get(
+    "/visualize",
+    response_class=HTMLResponse,
+    summary="Interactive visual dependency graph",
+    description="Serve an interactive, browser-based dependency graph with physics, search, and node inspection.",
+)
+def visualize_repo():
+    _require_project()
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    return HTMLResponse(content=builder.render_html())
+
+
+@app.on_event("startup")
+def on_startup():
+    """Auto-initialize if KARUVI_REPO environment variable is set."""
+    env_repo = os.getenv("KARUVI_REPO")
+    if env_repo:
+        p = Path(env_repo).expanduser().resolve()
+        if p.exists() and p.is_dir():
+            print(f"[Karuvi] Auto-initializing repository from KARUVI_REPO: {p}")
+            init_project(InitRequest(project_root=str(p), parse_all=True))
+
+
+if __name__ == "__main__":
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Karuvi Stateful Daemon")
+    parser.add_argument(
+        "--repo",
+        "-r",
+        type=str,
+        default=os.getenv("KARUVI_REPO"),
+        help="Path to repository to initialize immediately on boot",
+    )
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind")
+    parser.add_argument("--port", "-p", type=int, default=8000, help="Port to bind")
+    parser.add_argument("--reload", action="store_true", help="Enable reload")
+    args = parser.parse_args()
+
+    if args.repo:
+        os.environ["KARUVI_REPO"] = str(Path(args.repo).resolve())
+
+    uvicorn.run("main:app", host=args.host, port=args.port, reload=args.reload)

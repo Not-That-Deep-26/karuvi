@@ -11,3 +11,12 @@ dependencies = [
     "tree-sitter-python>=0.25.0",
     "uvicorn>=0.52.4",
 ]
+[project.scripts]
+karuvi = "cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["cli", "deps", "get_tree", "main", "pointers", "repo_graph", "returns"]
