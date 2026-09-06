@@ -1,6 +1,5 @@
-# 🛠️ Karuvi
+# Karuvi
 
-A fast, tree-sitter powered Python whole-repository dependency visualizer, symbol inspector, and blast radius analyzer with **Sourcetrail-grade architecture visualization** and an **aesthetic ASCII CLI**.
 
 ```text
   ██╗  ██╗ █████╗ ██████╗ ██╗   ██╗██╗   ██╗██╗
@@ -9,16 +8,10 @@ A fast, tree-sitter powered Python whole-repository dependency visualizer, symbo
   ██╔═██╗ ██╔══██║██╔══██╗██║   ██║██║   ██║██║
   ██║  ██╗██║  ██║██║  ██║╚██████╔╝╚██████╔╝██║
   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝
-  ⚡ Sourcetrail-Grade Architecture, AST & Dependency Visualizer
+  Sourcetrail-Grade Architecture, AST & Dependency Visualizer
 ```
 
----
-
-> 📖 **Looking for in-depth documentation?** Check out the [Full User Guide](USERGUIDE.md) for tutorials, CLI examples, Sourcetrail visualizer workflows, and API guides.
-
----
-
-## 🚀 Running Karuvi
+## Running Karuvi
 
 Use `uv run karuvi` or `uv run python cli.py`:
 
@@ -35,7 +28,7 @@ uv run karuvi /path/to/repo -i
 
 ---
 
-## 🛠️ CLI Command Reference & ASCII Tools
+## CLI Command Reference & ASCII Tools
 
 | Command / Flag | Description | Example Usage |
 |---|---|---|
@@ -55,20 +48,20 @@ uv run karuvi /path/to/repo -i
 
 ---
 
-## 🌐 Sourcetrail-Grade Interactive HTML Visualizer
+##  Sourcetrail-Grade Interactive HTML Visualizer
 
 When you export with `--html graph.html`, open it in any browser for a desktop IDE experience:
 - **3-Pane Workstation Layout**: Left Project Explorer, Center Graph Canvas, Right Dockable Inspector.
 - **Left Explorer**:
-  - 📁 **Files Tree**: Hierarchical folder/file structure with line counts and symbol badges.
-  - 🔤 **Symbols Index**: Quick-jump to any Class or Function.
-  - ⚠️ **Cycles Tab**: Lists all detected circular dependency chains.
+  - **Files Tree**: Hierarchical folder/file structure with line counts and symbol badges.
+  - **Symbols Index**: Quick-jump to any Class or Function.
+  - **Cycles Tab**: Lists all detected circular dependency chains.
 - **Center Canvas**:
   - Vis-network graph with custom node styles (internal modules vs. external packages).
   - Focus dimming: Clicking a module isolates its 1st-degree neighbors and dims the rest.
   - Top Toolbar: Force-Directed ⟷ Hierarchical DAG toggle, External toggle, Symbol toggle, Freeze, Fit view.
 - **Right Inspector**:
-  - 🌳 **Intra-File AST Tree**: Nested, collapsible code flow and scope tree with Expand/Collapse and filter search.
-  - ⚡ **Symbols & Blast Radius**: One-click "💥 Blast" button to trace call sites across the whole codebase.
-  - 🔗 **Dependencies**: Inbound and outbound links with click-to-focus navigation.
-  - ⚠️ **Cycles**: Displays any circular chains involving the module.
+  -  **Intra-File AST Tree**: Nested, collapsible code flow and scope tree with Expand/Collapse and filter search.
+  -  **Symbols & Blast Radius**: One-click "Blast" button to trace call sites across the whole codebase.
+  - **Dependencies**: Inbound and outbound links with click-to-focus navigation.
+  - **Cycles**: Displays any circular chains involving the module.
