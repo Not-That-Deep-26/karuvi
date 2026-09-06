@@ -1,0 +1,13 @@
+[project]
+name = "karuvi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "rich>=15.0.0",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-python>=0.25.0",
+    "uvicorn>=0.52.4",
+]
