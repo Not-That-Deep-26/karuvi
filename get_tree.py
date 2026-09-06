@@ -108,6 +108,8 @@ def get_function_call_dependants(tree: ts.Node):
             node.dependencies.extend(deps)
         elif item.type == "comment":
             continue
+        elif item.type == "attribute":
+            node.dependencies.append(item.text.decode())
         else:
             print("[red]unknown[/red]", item, item.text.decode())
 
@@ -240,7 +242,6 @@ class ModuleParser():
                 continue
             name = child.text.decode()
             dependants.append(name)
-            self.symbol_tree
 
         independants = []
         for expr in right:
@@ -248,6 +249,32 @@ class ModuleParser():
             independants.append(n)
 
         return dependants, independants
+
+    def _get_augassignment_fields(self, left, right):
+        dependants = []
+
+        for child in left:
+            if child.type != "identifier":
+                print(f"skipping {child.type} {child.text}")
+                continue
+            name = child.text.decode()
+            dependants.append(name)
+
+        independants = []
+
+        for child in right:
+            if child.type != "identifier":
+                print(f"skipping {child.type} {child.text}")
+                continue
+            name = child.text.decode()
+            independants.append(name)
+
+
+ 
+        return dependants, independants
+
+
+
 
     def _parse_expression(self, tree: ts.Tree):
         node = DepTree()
@@ -273,7 +300,18 @@ class ModuleParser():
             elif child.type == "identifier":
                 node.dependencies.append(child.text.decode())
             elif child.type == "augmented_assignment":
-                node.dependencies.append(child.text.decode())
+                left = child.children_by_field_name("left")
+                right = child.children_by_field_name("right")
+                # deps and indeps from a mathematical sense
+                deps, indeps = self._get_augassignment_fields(left, right)
+
+                for name in deps:
+                    subnode = DepTree(name)
+                    subnode.dependencies.extend(indeps)
+
+                node.children.append(subnode)
+
+               
             elif child.type == "attribute":
                 print(child.text, child)
             else:
