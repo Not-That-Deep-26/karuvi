@@ -8,7 +8,7 @@
   ██╔═██╗ ██╔══██║██╔══██╗██║   ██║██║   ██║██║
   ██║  ██╗██║  ██║██║  ██║╚██████╔╝╚██████╔╝██║
   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝
-  Sourcetrail-Grade Architecture, AST & Dependency Visualizer
+ A Deterministic Codebase Architecture Comprehension Assistant
 ```
 
 ## Running Karuvi
