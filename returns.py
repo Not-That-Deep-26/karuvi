@@ -9,7 +9,13 @@ class Variable:
     name: str
     uuid: str
     is_reference: bool
-    reference: tuple[str, int, int] # filename, lineno, colno 
+    reference: tuple[str, int, int] | None # filename, lineno, colno 
+
+    def __init__(self, name: str, uuid: str, is_reference: bool = False, reference: tuple[str, int, int] | None = None):
+        self.name = name
+        self.uuid = uuid
+        self.is_reference = is_reference
+        self.reference = reference
 
 class DepTree:
     """
@@ -43,5 +49,6 @@ def start_file(filename: str): ...
 def get_tree() -> DepTree:
     ...
 
-def find_tree(uuid: str)
+def find_tree(uuid: str):
+    ...
 
