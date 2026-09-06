@@ -8,8 +8,6 @@ from argparse import ArgumentParser
 from pathlib import Path
 import dataclasses
 
-# from import_resolver import root_tree, recurse_tree
-
 parser = ArgumentParser("lsc")
 parser.add_argument("--file", "-f", required=True, type=str, help="File to parse")
 
@@ -115,72 +113,6 @@ def get_function_call_dependants(tree: ts.Node):
 
 
     return function_name, node
-
-def parse_expression(tree: ts.Node):
-    name = None
-    node = DepTree()
-    node.name = "Expression"
-    dependencies = []
-    for child in tree.children:
-        if child.type == "call":
-            name, dependencies = get_function_call_dependants(child)
-            dependencies.name = f"call ({name})"
-            node.children.append(dependencies)
-        elif child.type == "assignment":
-            left_tree = child.children_by_field_name("left")
-            right_tree = child.children_by_field_name("right")
-
-            for child in left_tree:
-                if child.type != "identifier":
-                    continue
-                node.dependencies.append(child.text.decode() + " (dependant)")
-
-            for expr in right_tree:
-                n = parse_expression(expr)
-                node.children.append(n)
-
-        elif child.type == "identifier":
-            node.dependencies.append(child.text.decode())
-            dependencies.append(child.text.decode())
-
-    # return f"[green]expr[/green] calls [violet]{name}[/violet]", node
-    return node
-#
-# while True:
-#     if cursor.node.type == "module":
-#         cursor.goto_first_child()
-#         continue
-#
-#     if not cursor.goto_next_sibling():
-#         break
-#
-#     if cursor.node.type == "import_from_statement":
-#         ...
-#
-#     elif cursor.node.type == "import_statement":
-#         imports = []
-#         for child in cursor.node.named_children:
-#             if b"as" in child.text:
-#                 raise Exception("`import ... as ...` syntax not supported")
-#             imports.append(child.text.decode())
-#         print(imports)
-#         for mod in imports:
-#             if mod not in root_tree:
-#                 print(f"Cannot find definitions for {mod}")
-#                 continue
-#             print(f"loading pointers for: {mod}")
-# #                recurse_tree(root_tree[mod])
-#
-#     elif cursor.node.type == "function_definition":
-#         meta = parse_function(cursor.node)
-#         print(f"function: [blue]{meta.name.decode()}[/blue] params: [violet]{(b','.join(meta.parameters)).decode()}[/violet]", "[red]async[/red]" if meta.is_async else "")
-#     elif cursor.node.type == "expression_statement":
-#         name, deps = parse_expression(cursor.node)
-#         print(deps._print())
-#     else:
-#         print("[red]unknown[/red]", cursor.node.type, cursor.node.text.decode())
-# #
-
 from pointers import Symbol
 
 class ModuleParser():
