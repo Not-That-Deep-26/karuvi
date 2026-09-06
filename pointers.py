@@ -105,7 +105,7 @@ class GlobalIndex:
             file_path = self.find_module_file(from_module, relative_to=relative_to)
             if file_path is not None:
                 from get_tree import parse_file
-                mod = parse_file(str(file_path), global_index=self)
+                mod = parse_file(str(file_path), global_index=self, verbose=False)
                 self.modules[from_module] = mod
 
         if mod is not None:

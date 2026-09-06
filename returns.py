@@ -149,6 +149,7 @@ class Module:
     functions: list[Function]
     classes: list[Class]
     variables: dict[str, Variable]
+    scope: "Scope | None"
 
     def __init__(
         self,
@@ -158,6 +159,7 @@ class Module:
         functions: list[Function] | None = None,
         classes: list[Class] | None = None,
         variables: dict[str, Variable] | None = None,
+        scope: "Scope | None" = None,
     ):
         self.name = name
         self.file_path = file_path
@@ -165,6 +167,7 @@ class Module:
         self.functions = functions if functions is not None else []
         self.classes = classes if classes is not None else []
         self.variables = variables if variables is not None else {}
+        self.scope = scope
 
 
 _ACTIVE_MODULE: Module | None = None
@@ -207,3 +210,84 @@ def find_tree(uuid: str, tree: DepTree | None = None) -> DepTree | None:
             return found
 
     return None
+
+
+# ---------------------------------------------------------------------------
+# JSON-serializable representations
+# ---------------------------------------------------------------------------
+
+def _loc(t: tuple | None) -> dict | None:
+    if t is None:
+        return None
+    return {"file": t[0], "line": t[1], "col": t[2]}
+
+
+def variable_to_dict(var: Variable | None) -> dict | None:
+    if var is None:
+        return None
+    return {
+        "name": var.name,
+        "uuid": var.uuid,
+        "is_reference": var.is_reference,
+        "reference": _loc(var.reference),
+        "decl_reference": _loc(var.decl_reference),
+        "display": var.display_str(),
+    }
+
+
+def deptree_to_dict(tree: DepTree) -> dict:
+    return {
+        "name": tree.name,
+        "variable": variable_to_dict(tree.variable),
+        "dependencies": [variable_to_dict(d) for d in tree.dependencies],
+        "children": [deptree_to_dict(c) for c in tree.children],
+    }
+
+
+def function_to_dict(fn: Function) -> dict:
+    return {
+        "name": fn.name,
+        "signature": fn.signature,
+        "uuid": fn.uuid,
+        "flow": deptree_to_dict(fn.flow),
+    }
+
+
+def class_to_dict(cls: Class) -> dict:
+    return {
+        "name": cls.name,
+        "uuid": cls.uuid,
+        "functions": [function_to_dict(f) for f in cls.functions],
+    }
+
+
+def scope_to_dict(scope) -> dict:
+    """Serialise a `Scope` (from get_tree) into a plain dict tree."""
+    return {
+        "name": scope.name,
+        "symbols": {
+            name: variable_to_dict(var)
+            for name, var in scope.symbols.items()
+        },
+        "imports": dict(scope.imports),
+        "functions": dict(scope.functions),
+        "children": {
+            name: scope_to_dict(child)
+            for name, child in scope.children.items()
+        },
+    }
+
+
+def module_to_dict(module: Module) -> dict:
+    return {
+        "name": module.name,
+        "file_path": module.file_path,
+        "code_flow": deptree_to_dict(module.code_flow),
+        "functions": [function_to_dict(f) for f in module.functions],
+        "classes": [class_to_dict(c) for c in module.classes],
+        "variables": {
+            name: variable_to_dict(var)
+            for name, var in module.variables.items()
+        },
+        "scopes": scope_to_dict(module.scope) if module.scope else None,
+    }

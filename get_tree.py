@@ -33,6 +33,9 @@ class Scope:
         self.symbols: dict[str, Variable] = {}
         self.imports: dict[str, str] = {}
         self.functions: dict[str, str] = {}
+        self.children: dict[str, Scope] = {}
+        if parent is not None:
+            parent.children[name] = self
 
     def add_import(self, name: str, module: str):
         self.imports[name] = module
@@ -197,6 +200,19 @@ class Scope:
             return ("import", var.uuid.split(":", 1)[1])
         else:
             return ("symbol", var.uuid)
+
+    def _print(self) -> Tree:
+        """Render the scope and its contents as a rich Tree."""
+        node = Tree(f"Scope: {self.name}")
+        for name, var in self.symbols.items():
+            node.add(Text(f"symbol: {name} -> {var.display_str()}"))
+        for name, mod in self.imports.items():
+            node.add(Text(f"import: {name} -> {mod}"))
+        for name, fn_uuid in self.functions.items():
+            node.add(Text(f"function: {name} (id={fn_uuid})"))
+        for _, child in self.children.items():
+            node.add(child._print())
+        return node
 
 
 def format_reference(name: str, scope: Scope) -> str:
@@ -407,7 +423,8 @@ class ModuleParser:
                 base_dir = Path(self.file_path).parent if self.file_path else Path(".")
                 if self.global_index:
                     self.global_index.resolve_import(mod, "", relative_to=base_dir)
-                print("importing", mod)
+                if getattr(self, "verbose", True):
+                    print("importing", mod)
             elif child.type == "aliased_import":
                 name = child.child_by_field_name("name")
                 alias = child.child_by_field_name("alias")
@@ -417,7 +434,8 @@ class ModuleParser:
                 base_dir = Path(self.file_path).parent if self.file_path else Path(".")
                 if self.global_index:
                     self.global_index.resolve_import(mod_name, "", relative_to=base_dir)
-                print(f"importing {mod_name} as {alias_name}")
+                if getattr(self, "verbose", True):
+                    print(f"importing {mod_name} as {alias_name}")
 
     def parse_import_from(self, node: ts.Node):
         mod_node = node.child_by_field_name("module_name")
@@ -441,7 +459,8 @@ class ModuleParser:
                     node=child,
                     filename=self.file_path,
                 )
-                print(f"importing {name} from {mod_name}")
+                if getattr(self, "verbose", True):
+                    print(f"importing {name} from {mod_name}")
             elif child.type == "aliased_import":
                 name = child.child_by_field_name("name")
                 alias = child.child_by_field_name("alias")
@@ -459,7 +478,8 @@ class ModuleParser:
                     node=alias or child,
                     filename=self.file_path,
                 )
-                print(f"importing {sym_name} as {alias_name} from {mod_name}")
+                if getattr(self, "verbose", True):
+                    print(f"importing {sym_name} as {alias_name} from {mod_name}")
 
     def parse_assignment(self, expr: ts.Node) -> DepTree:
         stmt_node = DepTree("Node")
@@ -527,18 +547,21 @@ class ModuleParser:
         stmt_node.children.append(aug_tree)
         return stmt_node
 
-    def parse_function_definition(self, node: ts.Node) -> DepTree:
+    def parse_function_definition(
+        self, node: ts.Node, scope: Scope | None = None
+    ) -> DepTree:
         stmt_node = DepTree("Node")
         fn_name_node = node.child_by_field_name("name")
         params_node = node.child_by_field_name("parameters")
         body_node = node.child_by_field_name("body")
 
+        scope = scope if scope is not None else self.scope
         fn_name = fn_name_node.text.decode() if fn_name_node else "anonymous"
-        fn_var = self.scope.assign_variable(fn_name, node=fn_name_node, filename=self.file_path)
-        self.scope.functions[fn_name] = fn_var.uuid
+        fn_var = scope.assign_variable(fn_name, node=fn_name_node, filename=self.file_path)
+        scope.functions[fn_name] = fn_var.uuid
 
         fn_scope = Scope(
-            name=fn_name, parent=self.scope, global_index=self.global_index
+            name=fn_name, parent=scope, global_index=self.global_index
         )
         param_names = []
         param_vars: list[Variable] = []
@@ -548,13 +571,28 @@ class ModuleParser:
                 var = fn_scope.assign_variable(p_name, node=p, filename=self.file_path)
                 param_names.append(p_name)
                 param_vars.append(var)
+                if p.type in ("default_parameter", "typed_default_parameter"):
+                    default_node = p.child_by_field_name("value")
+                    if default_node and default_node.type == "call":
+                        fn_tree_defaults = parse_call_node(
+                            default_node, fn_scope, filename=self.file_path
+                        )
+                        param_vars.append(fn_tree_defaults)
+                    elif default_node:
+                        default_tree = parse_expression_tree(
+                            default_node, fn_scope, filename=self.file_path
+                        )
+                        param_vars.append(default_tree)
 
         fn_tree = DepTree(
             name=f"def {fn_name}({', '.join(param_names)}) (id={fn_var.uuid})",
             variable=fn_var,
         )
         for p_var in param_vars:
-            fn_tree.dependencies.append(p_var)
+            if isinstance(p_var, Variable):
+                fn_tree.dependencies.append(p_var)
+            else:
+                fn_tree.children.append(p_var)
 
         # Parse body statements in fn_scope
         if body_node:
@@ -574,19 +612,23 @@ class ModuleParser:
         stmt_node.children.append(fn_tree)
         return stmt_node
 
-    def parse_decorated_definition(self, node: ts.Node) -> DepTree:
+    def parse_decorated_definition(
+        self, node: ts.Node, scope: Scope | None = None
+    ) -> DepTree:
         stmt_node = DepTree("Node")
         inner_tree: DepTree | None = None
         decorators: list[DepTree] = []
 
+        scope = scope if scope is not None else self.scope
+
         for child in node.named_children:
             if child.type == "decorator":
-                decorators.append(parse_decorator(child, self.scope, filename=self.file_path))
+                decorators.append(parse_decorator(child, scope, filename=self.file_path))
             elif child.type == "function_definition":
-                fn_wrapper = self.parse_function_definition(child)
+                fn_wrapper = self.parse_function_definition(child, scope=scope)
                 inner_tree = fn_wrapper.children[0] if fn_wrapper.children else fn_wrapper
             elif child.type == "class_definition":
-                cls_wrapper = self.parse_class_definition(child)
+                cls_wrapper = self.parse_class_definition(child, scope=scope)
                 inner_tree = cls_wrapper.children[0] if cls_wrapper.children else cls_wrapper
 
         if inner_tree:
@@ -599,28 +641,54 @@ class ModuleParser:
 
         return stmt_node
 
-    def parse_class_definition(self, node: ts.Node) -> DepTree:
+    def parse_class_definition(
+        self, node: ts.Node, scope: Scope | None = None
+    ) -> DepTree:
         stmt_node = DepTree("Node")
         cls_name_node = node.child_by_field_name("name")
         body_node = node.child_by_field_name("body")
+        scope = scope if scope is not None else self.scope
         cls_name = cls_name_node.text.decode() if cls_name_node else "anonymous"
-        cls_var = self.scope.assign_variable(cls_name, node=cls_name_node, filename=self.file_path)
+        cls_var = scope.assign_variable(cls_name, node=cls_name_node, filename=self.file_path)
 
         cls_tree = DepTree(
             name=f"class {cls_name} (id={cls_var.uuid})",
             variable=cls_var,
         )
         cls_scope = Scope(
-            name=cls_name, parent=self.scope, global_index=self.global_index
+            name=cls_name, parent=scope, global_index=self.global_index
         )
 
+        cls_functions: list[Function] = []
         if body_node:
             for stmt in body_node.named_children:
-                parsed_stmt = self._parse_statement_in_scope(stmt, cls_scope)
-                if parsed_stmt:
-                    cls_tree.children.append(parsed_stmt)
+                if stmt.type == "function_definition":
+                    fn_stmt = self.parse_function_definition(stmt, scope=cls_scope)
+                    if fn_stmt and fn_stmt.children:
+                        cls_tree.children.append(fn_stmt)
+                        fn_name_node = stmt.child_by_field_name("name")
+                        fn_name = fn_name_node.text.decode() if fn_name_node else ""
+                        for func in self.function_objs:
+                            if func.name == fn_name:
+                                cls_functions.append(func)
+                elif stmt.type == "decorated_definition":
+                    dec_stmt = self.parse_decorated_definition(stmt, scope=cls_scope)
+                    if dec_stmt and dec_stmt.children:
+                        cls_tree.children.append(dec_stmt)
+                        fn_node = stmt.child_by_field_name("definition")
+                        fn_name_node = (
+                            fn_node.child_by_field_name("name") if fn_node else None
+                        )
+                        fn_name = fn_name_node.text.decode() if fn_name_node else ""
+                        for func in self.function_objs:
+                            if func.name == fn_name:
+                                cls_functions.append(func)
+                else:
+                    parsed_stmt = self._parse_statement_in_scope(stmt, cls_scope)
+                    if parsed_stmt:
+                        cls_tree.children.append(parsed_stmt)
 
-        cls_obj = Class(name=cls_name, uuid=cls_var.uuid)
+        cls_obj = Class(name=cls_name, functions=cls_functions, uuid=cls_var.uuid)
         self.class_objs.append(cls_obj)
 
         stmt_node.children.append(cls_tree)
@@ -699,6 +767,12 @@ class ModuleParser:
             stmt_node = DepTree("Node")
             stmt_node.children.append(ret_tree)
             return stmt_node
+        elif node.type == "function_definition":
+            fn_stmt = self.parse_function_definition(node, scope=scope)
+            if fn_stmt and fn_stmt.children:
+                stmt_node = DepTree("Node")
+                stmt_node.children.append(fn_stmt)
+                return stmt_node
         return None
 
     def parse_expression_statement(self, node: ts.Node) -> DepTree | None:
@@ -723,7 +797,8 @@ class ModuleParser:
                 return stmt_node
             return None
 
-    def parse(self):
+    def parse(self, verbose: bool = True):
+        self.verbose = verbose
         self.tree = self.parser.parse(self.src)
         self.root_deptree = DepTree("Module Start")
 
@@ -749,16 +824,41 @@ class ModuleParser:
                 if stmt_node and (stmt_node.children or stmt_node.dependencies):
                     self.root_deptree.children.append(stmt_node)
             else:
-                print(f"[red]unknown top-level statement:[/red] {child.type}")
+                if getattr(self, "verbose", True):
+                    print(f"[red]unknown top-level statement:[/red] {child.type}")
 
         if self.global_index:
             self.global_index.register_module(self.mod_name, self)
 
+        if not self.verbose:
+            return
+
         print("Parsing complete")
         print(self.root_deptree._print())
 
+        print("\nClasses:")
+        if self.class_objs:
+            for cls in self.class_objs:
+                print(f"  class {cls.name} (id={cls.uuid})")
+                for func in cls.functions:
+                    print(f"    def {func.name}{func.signature} (id={func.uuid})")
+        else:
+            print("  (none)")
 
-def parse_file(file_path: str, global_index: GlobalIndex | None = None) -> Module:
+        print("\nFunctions:")
+        if self.function_objs:
+            for func in self.function_objs:
+                print(f"  def {func.name}{func.signature} (id={func.uuid})")
+        else:
+            print("  (none)")
+
+        print("\nScopes:")
+        print(self.scope._print())
+
+
+def parse_file(
+    file_path: str, global_index: GlobalIndex | None = None, verbose: bool = True
+) -> Module:
     """Convenience function to parse a file and return a Module."""
     if global_index is None:
         global_index = DEFAULT_INDEX
@@ -769,7 +869,7 @@ def parse_file(file_path: str, global_index: GlobalIndex | None = None) -> Modul
 
     mod_parser = ModuleParser(str(target), parser, global_index=global_index)
     mod_parser.src = target.read_bytes()
-    mod_parser.parse()
+    mod_parser.parse(verbose=verbose)
 
     module_obj = Module(
         name=mod_parser.mod_name,
