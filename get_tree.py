@@ -291,6 +291,7 @@ class ModuleParser():
         while self._cycle():
             ...
         print("Parsing complete")
+        print(self.root_deptree._print())
 
 
 p = ModuleParser("", parser)
