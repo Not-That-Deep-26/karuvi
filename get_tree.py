@@ -237,7 +237,11 @@ class ModuleParser():
         dependants = []
 
         for child in left:
-            if child.type != "identifier":
+            if child.type == "pattern_list":
+                dependants.extend([t.strip() for t in child.text.decode().split(",")])
+                continue
+
+            elif child.type != "identifier":
                 print(f"skipping {child.type} {child.text}")
                 continue
             name = child.text.decode()
@@ -315,7 +319,7 @@ class ModuleParser():
             elif child.type == "attribute":
                 print(child.text, child)
             else:
-                print(f"[red]unknown:[/red]", child.type)
+                print(f"[red]unknown:[/red]", child.type, child.text)
 
         return node
 
