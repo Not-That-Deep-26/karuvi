@@ -10,5 +10,5 @@ c *= a
 
 print(a, b, c, d)
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock = asd(socket.AF_INET, socket.SOCK_STREAM)
 socket.socket(socket.AF_INET, socket.SOCK_STREAM)

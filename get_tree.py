@@ -207,7 +207,6 @@ class ModuleParser():
             raise Exception("`import ... from ...` syntax not supported")
 
         elif self.cursor.node.type == "import_statement":
-            print()
             # imports = []
             if b"as" in self.cursor.node.text:
                 raise Exception("`import ... as ...` syntax not supported")
