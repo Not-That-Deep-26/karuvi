@@ -4,7 +4,15 @@ __pycache__/
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.pytest_cache/
+.coverage
 
 # Virtual environments
-.venv
+.venv/
+
+# Local analysis & visualizer exports
+*_atlas.html
+*_graph.html
+*analysis.json
+architecture.json

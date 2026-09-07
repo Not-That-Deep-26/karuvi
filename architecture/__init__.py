@@ -26,6 +26,10 @@ from architecture.serialization import (
     export_architecture_json,
     serialize_architecture_model,
 )
+from architecture.visualizer import (
+    build_unified_payload,
+    generate_atlas_html,
+)
 
 __all__ = [
     "ArchitectureAnalyzer",
@@ -39,7 +43,9 @@ __all__ = [
     "GraphValidationError",
     "MissingDependencyError",
     "Module",
+    "build_unified_payload",
     "export_architecture_json",
     "generate_architecture_markdown",
+    "generate_atlas_html",
     "serialize_architecture_model",
 ]

@@ -97,6 +97,9 @@ uv run karuvi --commands
 | `--inspect <file>` | — | Inspect classes, methods, functions & symbols in a file | `uv run karuvi <repo> --inspect src/app.py` |
 | `--chart <file>` | `--file-chart` | Print indentation-based control flow chart | `uv run karuvi <repo> --chart src/app.py` |
 | `--graph` | `--ascii-graph` | Display ASCII connectivity matrix / summary table | `uv run karuvi <repo> --graph` |
+| `--architecture` | `-a` | Reconstruct architecture components, roles & flows | `uv run karuvi <repo> -a` |
+| `--arch-json <path>` | — | Export reconstructed architecture model to JSON | `uv run karuvi <repo> -a --arch-json arch.json` |
+| `--arch-doc <path>` | — | Export deterministic Markdown architecture docs | `uv run karuvi <repo> -a --arch-doc ARCH.md` |
 | `--interactive` | `-i` | Launch interactive terminal explorer & AST navigator | `uv run karuvi <repo> -i` |
 | `--html <path>` | — | Export standalone Sourcetrail interactive HTML visualizer | `uv run karuvi <repo> --html graph.html` |
 | `--json <path>` | `-j` | Export full repository analysis and AST dump | `uv run karuvi <repo> --json report.json` |
@@ -224,11 +227,16 @@ Summarizes internal imports, external dependencies, and inbound/outbound degrees
 
 ### Exporting Reports (`--html`, `--json`, `--mermaid`)
 
-#### 1. Interactive HTML Visualizer (`--html`)
+#### 1. Interactive Living Codebase Atlas (`--html`)
 ```bash
-uv run karuvi /home/tarun/microdot-main/ --html microdot_sourcetrail.html
+uv run karuvi /home/tarun/microdot-main/ --html microdot_atlas.html
 ```
-Produces a completely self-contained HTML file (no server needed) with the Sourcetrail 3-pane architecture.
+Produces a completely self-contained, dark-mode single-page HTML application (zero external server dependencies) uniting Karuvi's 5 core modes:
+1. **◉ Overview Dashboard**: Codebase vitals, metrics, and structural "Start Here" entry point recommendations.
+2. **🗺️ Architecture**: Reconstructed components, confidence scores, structural roles, and cross-component flows.
+3. **🕸️ Graph Explorer**: Multi-scale canvas with dynamic cluster unfolding (Component ➔ Modules ➔ Symbols).
+4. **📁 Code Explorer**: Interactive file tree with role badges and AST code flow hierarchy.
+5. **📖 Knowledge / Docs**: Deterministic DeepWiki-style factual documentation.
 
 #### 2. Full Analysis JSON (`--json`)
 ```bash
@@ -260,7 +268,7 @@ An interactive menu appears:
 │ [1] 🌳 View Intra-File Tree       [2] ⚡ Inspect File Symbols        │
 │ [3] 🔗 View Dependencies (In/Out) [4] 💥 Trace Blast Radius         │
 │ [5] ⚠️  Detect Circular Imports   [6] 📊 Full Repository Dashboard  │
-│ [7] 🌐 Export Sourcetrail HTML    [8] 💾 Export JSON Report         │
+│ [7] 🌐 Export Living Atlas HTML   [8] 💾 Export JSON Report         │
 │ [?] 🛠️  Show Commands Reference    [q] Exit                          │
 ╰─────────────────────────────────────────────────────────────────────╯
 Select an action [1-8, ?, q]: 
@@ -272,59 +280,66 @@ Select an action [1-8, ?, q]:
 
 ---
 
-## 5. Sourcetrail HTML Visualizer Guide
+## 5. Living Codebase Atlas Guide
 
-When you generate an HTML report (`--html graph.html`), opening it in your browser launches a desktop-grade architecture workstation:
+When you generate an HTML report (`--html atlas.html`) or launch the daemon (`--serve`), opening the application in any modern browser delivers Karuvi's complete **Living Codebase Atlas**:
 
 ```text
-┌─────────────────┬───────────────────────────────────┬──────────────────┐
-│ PROJECT EXPLORER│         CENTER GRAPH CANVAS       │  RIGHT INSPECTOR │
-│                 │                                   │                  │
-│ [Files] [Syms]  │  [Mode: Force/DAG] [Ext] [Freeze] │ [AST] [Blast]    │
-│                 │  project / path / file.py         │                  │
-│ 📄 session.py   │                                   │ 📦 session.py    │
-│ 📄 asgi.py      │          (Active Focus)           │ ├── 🏷️ Session   │
-│ 📄 auth.py      │        ┌───────────────┐          │ │   └── ⚡ get   │
-│                 │        │  session.py   │          │ ├── ⚡ with_sess │
-│                 │        └───────┬───────┘          │                  │
-│                 │                ▼                  │ [💥 Trace Blast] │
-│                 │         microdot.py               │                  │
-└─────────────────┴───────────────────────────────────┴──────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  🗺️ Karuvi Atlas   [◉ Overview] [🗺️ Architecture] [🕸️ Graph] [📁 Code] [📖 Docs]  │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│   ◉ OVERVIEW            🗺️ ARCHITECTURE         🕸️ GRAPH CANVAS                  │
+│   • Codebase Vitals     • Components & Roles    • Multi-Scale Cluster Unfolding  │
+│   • Start Here Entry    • Cross-Component Flows • Call / Import / Ref Filters    │
+│   • Cycle Radar         • Confidence Scores     • Real-time Evidence Inspector   │
+│                                                                                  │
+│   📁 CODE EXPLORER      📖 KNOWLEDGE DOCS       🔍 GLOBAL SEARCH (Cmd+K)         │
+│   • Role Badges         • Deterministic DeepWiki• Instant symbol & file search   │
+│   • AST Code Flow       • Verified Facts Only   • Keyboard-driven navigation     │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3-Pane Workspace Breakdown
+### The 5 Unified Modes
 
-#### 1. Left Explorer Panel
-- **📁 Files Tab**: Hierarchical folder view showing line counts (`LOC`) and symbol counts for each file. Clicking any file focuses it in the graph and opens the inspector.
-- **🔤 Symbols Tab**: Global index of all classes (`[Class]`) and functions (`[Def]`). Clicking any symbol jumps straight to its declaring file.
-- **⚠️ Cycles Tab**: If circular import loops exist, they appear here. Clicking a cycle highlights that loop in the graph.
-- **Omni-Search (`/`)**: Press `/` or click the search box to filter files and symbols in real time.
+#### 1. ◉ Overview Dashboard
+- **Codebase Vitals**: Real-time counters for modules, components, indexed symbols, inter-module edges, and circular dependency loops.
+- **"Start Here" Entry Points**: Ranked entry candidate modules calculated via low incoming coupling and broad downstream reach ($low\_incoming \times reach$).
+- **Key Architecture Flows**: Detected multi-component execution journeys from root entrypoints through core layers to persistence leaves.
 
-#### 2. Center Graph Canvas
-- **Sourcetrail Focus & Dimming**:
-  - Clicking any node isolates it.
-  - **Inbound connections (imported by)** turn emerald green (`#34d399`).
-  - **Outbound connections (imports)** turn cyan (`#38bdf8`).
-  - Non-connected nodes dim to 0.12 opacity to eliminate clutter.
-- **Toolbar Actions**:
-  - **Mode Switcher**: Toggle between **Force Atlas** (organic physics) and **Hierarchical DAG** (layered dependency tree).
-  - **External Toggle**: Show or hide 3rd-party dependencies (e.g. `fastapi`, `jinja2`).
-  - **Symbols Toggle**: Show or hide cross-file symbol call edges.
-  - **Freeze / Unfreeze (`❄️`)**: Lock graph node positions for static reading.
-  - **Fit (`⤢`)**: Center and fit the entire graph into view.
+#### 2. 🗺️ Architecture Reconstruction
+- **Component Cards**: Displays automatically reconstructed architectural boundaries (e.g. `api-services`, `database`, `auth`).
+- **Evidence Confidence Scores**: Transparent scoring (e.g. `85%`) based on directory structure, Louvain graph community alignment, and naming cohesion.
+- **Cross-Component Dependencies**: Upstream components imported and downstream dependents served.
+- **High-Level Flows**: Shortest dependency paths across condensed architectural DAGs.
 
-#### 3. Right Inspector Panel
-- **🌳 AST Tree Tab**:
-  - Full collapsible intra-file code flow tree.
-  - Color badges for `[Class]`, `[Def]`, `[Var]`, `[Ref]`, and `[Stmt]`.
-  - Buttons for **Expand All** and **Collapse All**.
-- **⚡ Symbols & Blast Tab**:
-  - Lists all declared classes, methods, and functions.
-  - Clicking **💥 Blast** traces all cross-file occurrences of the symbol and highlights affected modules in ruby red on the canvas.
-- **🔗 Dependencies Tab**:
-  - Direct links to upstream imports and downstream dependents. Clicking any dependency navigates the graph canvas to that node.
-- **⚠️ Cycles Tab**:
-  - Displays the exact circular import loops involving this file.
+#### 3. 🕸️ Graph Explorer & Multi-Scale Unfolding
+- **Multi-Level Zoom & Unfolding**:
+  - Starts at the **Component Level** for a calm, clutter-free architecture overview.
+  - **Double-click** or click **Unfold into Modules ➔** on any component node to smoothly expand that component into its constituent modules.
+  - Inter-component edges dynamically rewire to module-level edges!
+- **Edge Type Filtering**: Toggle between **Imports**, **Symbol Calls**, and **Inheritance** edges.
+- **Focus & Dimming**: Clicking any node isolates it, highlighting inbound dependents (green) and outbound dependencies (cyan) while dimming unconnected nodes.
+- **Evidence Inspector**: Right-hand panel revealing metrics (in/out degree, PageRank, betweenness), member symbols, and blast radius.
+
+#### 4. 📁 Code Explorer & AST Tree
+- **Annotated File Tree**: Structural role badges for every file:
+  - `🚪 Entry Candidate`: High reach, low incoming coupling.
+  - `⚡ Hub`: High connectivity / coordinating center.
+  - `🌉 Bridge`: Critical bottleneck bridging distinct components.
+  - `🍃 Leaf`: Pure utility or database layer with zero outbound internal imports.
+- **AST Hierarchy & Code Flow**: Interactive tree view displaying classes, methods, functions, lexical scopes, and variable references with line numbers.
+
+#### 5. 📖 Knowledge / Docs
+- **Deterministic DeepWiki-Style Documentation**: Fully factual, pre-computed architectural documentation.
+- **Verified Facts Only**: 100% generated from AST pointers, import graphs, and metrics with zero LLM hallucination risk.
+- **Copyable Markdown**: Includes structural summaries, component catalogues, and architecture diagrams.
+
+### Keyboard Shortcuts
+
+- **`Cmd + K`** / **`Ctrl + K`**: Open Global Search modal.
+- **`Esc`**: Close search modal or deselect active canvas node.
+- **`1` - `5`**: Jump between tabs (Overview, Architecture, Graph, Code, Docs).
 
 ---
 
@@ -343,8 +358,14 @@ uv run uvicorn main:app --port 8000
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/` | **Interactive Living Codebase Atlas Web UI** |
+| `GET` | `/visualize` | Interactive Living Codebase Atlas Web UI (alias) |
+| `GET` | `/architecture` | Reconstructed architecture model (`components`, `boundaries`, `roles`, `flows`) as JSON |
+| `GET` | `/architecture/doc` | Deterministic DeepWiki-style architecture documentation (Markdown) |
 | `POST` | `/init` | Initialize repository root: `{"project_root": "/path/to/repo"}` |
-| `GET` | `/status` | Returns number of indexed files and parse count |
+| `GET` | `/status` | Returns number of indexed files and parse count (JSON) |
+| `GET` | `/graph` | Whole-repository dependency graph with nodes, edges, and cross-references |
+| `GET` | `/export` | Full repository analysis and AST dump as JSON |
 | `GET` | `/files` | Lists all parsed files and module names |
 | `GET` | `/dependencies` | Query symbol references in a file: `/dependencies?file=src/app.py&start=10&end=25` |
 | `GET` | `/tree` | Returns internal AST dependency tree for a file: `/tree?file=src/app.py` |

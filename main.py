@@ -492,20 +492,52 @@ def _walk_scope(scope, name: str):
 
 @app.get(
     "/",
-    summary="Karuvi index & status",
-    description="Welcome endpoint with links to documentation and visualization.",
+    response_class=HTMLResponse,
+    summary="Living Codebase Atlas",
+    description="Serve the interactive Living Codebase Atlas web platform.",
 )
 def root():
-    return {
-        "title": "Karuvi Stateful Daemon",
-        "status": "ready" if PROJECT_ROOT else "uninitialized",
-        "project_root": str(PROJECT_ROOT) if PROJECT_ROOT else None,
-        "files_loaded": len(PARSED),
-        "docs_url": "/docs",
-        "visualize_url": "/visualize" if PROJECT_ROOT else "Initialize first via POST /init",
-        "graph_url": "/graph" if PROJECT_ROOT else "Initialize first via POST /init",
-        "export_url": "/export" if PROJECT_ROOT else "Initialize first via POST /init",
-    }
+    if not PROJECT_ROOT:
+        return HTMLResponse(
+            """<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Karuvi Daemon</title>
+  <style>
+    body { background: #07090e; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; line-height: 1.6; }
+    code { background: #141b2d; padding: 3px 8px; border-radius: 6px; color: #38bdf8; font-family: monospace; }
+    pre { background: #0e131f; padding: 16px; border-radius: 8px; border: 1px solid #232d42; overflow-x: auto; color: #e2e8f0; }
+    a { color: #38bdf8; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+    .card { background: #0e131f; border: 1px solid #232d42; border-radius: 12px; padding: 24px; max-width: 680px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🗺️ Karuvi Living Codebase Atlas</h1>
+  <div class="card">
+    <p>The Karuvi daemon is running, but no project has been initialized yet.</p>
+    <p>To initialize, run Karuvi with <code>--serve</code> or send a POST request to <code>/init</code>:</p>
+    <pre>curl -X POST http://127.0.0.1:8000/init \
+  -H "Content-Type: application/json" \
+  -d '{"project_root": "/path/to/repo"}'</pre>
+    <p style="margin-top: 16px;"><a href="/docs">Open Interactive API Documentation & Swagger UI →</a></p>
+  </div>
+</body>
+</html>"""
+        )
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    return HTMLResponse(content=builder.render_html())
+
+
+@app.get(
+    "/visualize",
+    response_class=HTMLResponse,
+    summary="Interactive Living Codebase Atlas (alias)",
+    description="Serve the interactive Living Codebase Atlas web platform.",
+)
+def visualize_repo():
+    return root()
 
 
 @app.get(
@@ -517,6 +549,33 @@ def get_repo_graph():
     _require_project()
     builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
     return builder.to_dict()
+
+
+@app.get(
+    "/architecture",
+    summary="Reconstructed architecture model (JSON)",
+    description="Return reconstructed components, boundaries, roles, metrics, entrypoints, and flows.",
+)
+def get_architecture():
+    _require_project()
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    from architecture.analyzer import ArchitectureAnalyzer
+    arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
+    return arch_model.to_dict()
+
+
+@app.get(
+    "/architecture/doc",
+    summary="Architecture documentation (Markdown)",
+    description="Return deterministic DeepWiki-style architecture documentation.",
+)
+def get_architecture_doc():
+    _require_project()
+    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
+    from architecture.analyzer import ArchitectureAnalyzer
+    from architecture.documentation import generate_architecture_markdown
+    arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
+    return {"documentation": generate_architecture_markdown(arch_model)}
 
 
 @app.get(
@@ -536,18 +595,6 @@ def export_repo():
         "graph": builder.to_dict(),
         "modules": modules_dump,
     }
-
-
-@app.get(
-    "/visualize",
-    response_class=HTMLResponse,
-    summary="Interactive visual dependency graph",
-    description="Serve an interactive, browser-based dependency graph with physics, search, and node inspection.",
-)
-def visualize_repo():
-    _require_project()
-    builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
-    return HTMLResponse(content=builder.render_html())
 
 
 @app.on_event("startup")
