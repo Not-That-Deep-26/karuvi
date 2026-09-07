@@ -125,6 +125,44 @@ class RepoGraphBuilder:
             if not mod.scope:
                 continue
 
+            # 2a. Direct module imports (import foo)
+            if hasattr(mod.scope, "imports"):
+                for imp_alias, imp_mod in mod.scope.imports.items():
+                    target_key = self._resolve_target_module(
+                        imp_mod, rel_key, mod_name_to_key
+                    )
+                    if target_key:
+                        if target_key != rel_key:
+                            self.edges.append(
+                                Edge(
+                                    source=rel_key,
+                                    target=target_key,
+                                    type="import",
+                                    details=f"imports {imp_mod}",
+                                )
+                            )
+                    else:
+                        ext_pkg = imp_mod.split(".")[0]
+                        if ext_pkg and ext_pkg not in mod_name_to_key:
+                            self.external_packages.add(ext_pkg)
+                            ext_id = f"ext:{ext_pkg}"
+                            if ext_id not in self.nodes:
+                                self.nodes[ext_id] = Node(
+                                    id=ext_id,
+                                    name=ext_pkg,
+                                    path=f"external:{ext_pkg}",
+                                    is_internal=False,
+                                )
+                            self.edges.append(
+                                Edge(
+                                    source=rel_key,
+                                    target=ext_id,
+                                    type="import",
+                                    details=f"imports third-party package '{ext_pkg}'",
+                                )
+                            )
+
+            # 2b. Symbol imports (from foo import bar)
             for sym_name, sym_var in mod.scope.symbols.items():
                 if sym_var.uuid and str(sym_var.uuid).startswith("import:"):
                     imported_raw = str(sym_var.uuid).split(":", 1)[1]
