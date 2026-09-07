@@ -19,6 +19,7 @@ from typing import Any
 from architecture.analyzer import ArchitectureAnalyzer
 from architecture.documentation import generate_architecture_markdown
 from architecture.models import ArchitectureModel
+from architecture.module_graph import normalize_module_path
 
 
 def build_unified_payload(
@@ -42,9 +43,14 @@ def build_unified_payload(
         components_list.append(c_dict)
 
     # 2. Module list with enhanced architectural metadata and source code
+    raw_nodes = getattr(repo_builder, "nodes", {}) or {}
+    normalized_nodes = {
+        normalize_module_path(k, repo_root): v for k, v in raw_nodes.items()
+    }
+
     modules_list = []
     for mod_id, mod in arch_model.modules.items():
-        node_raw = repo_builder.nodes.get(mod_id) if repo_builder else None
+        node_raw = normalized_nodes.get(mod_id)
         line_count = node_raw.line_count if node_raw else 0
         fn_count = node_raw.function_count if node_raw else 0
         cls_count = node_raw.class_count if node_raw else 0
