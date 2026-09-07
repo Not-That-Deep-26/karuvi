@@ -1,0 +1,1 @@
+# tests/architecture package marker

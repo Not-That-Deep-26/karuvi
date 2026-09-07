@@ -60,6 +60,7 @@ class GlobalIndex:
         self.modules: dict[str, Any] = {}
         self.declarations_by_uuid: dict[str, Any] = {}
         self.search_paths: list[Path] = [Path(".")]
+        self._in_progress: set[str] = set()
 
     def add_search_path(self, path: Path | str):
         p = Path(path).resolve()
@@ -104,9 +105,16 @@ class GlobalIndex:
         if mod is None:
             file_path = self.find_module_file(from_module, relative_to=relative_to)
             if file_path is not None:
-                from get_tree import parse_file
-                mod = parse_file(str(file_path), global_index=self, verbose=False)
-                self.modules[from_module] = mod
+                str_path = str(file_path)
+                if str_path in self._in_progress:
+                    return None
+                self._in_progress.add(str_path)
+                try:
+                    from get_tree import parse_file
+                    mod = parse_file(str_path, global_index=self, verbose=False)
+                    self.modules[from_module] = mod
+                finally:
+                    self._in_progress.discard(str_path)
 
         if mod is not None:
             # Check module's variables dictionary
