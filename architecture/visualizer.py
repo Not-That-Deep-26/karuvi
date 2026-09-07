@@ -1718,11 +1718,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       function renderDependencyTree(mod) {
         if (!mod) return;
         
-        let html = astStyles;
-        html += `<div style="font-size: 13px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); word-break: break-all;">🌳 Module Explorer<br><span style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace; font-weight: normal;">${mod.id}</span></div>`;
+        let html1 = '';
+        html1 += `<div style="font-size: 13px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); word-break: break-all;">🌳 Module Explorer<br><span style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace; font-weight: normal;">${mod.id}</span></div>`;
         
         // --- Upstream ---
-        html += `
+        html1 += `
           <div style="margin-bottom: 12px; padding: 0 8px;">
             <div style="font-size: 11px; font-weight: 700; color: var(--accent-amber); text-transform: uppercase; padding: 4px 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
               <span style="font-size: 8px;">▼</span> ⬆️ UPSTREAM DEPENDENCIES (${(mod.outgoing_modules || []).length})
@@ -1733,15 +1733,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             mod.outgoing_modules.forEach(depId => {
               const depMod = (data.modules || []).find(m => m.id === depId);
               const depName = depMod ? depMod.path : depId;
-              html += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
+              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
             });
         } else {
-            html += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No imports)</div>`;
+            html1 += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No imports)</div>`;
         }
-        html += `</div></div>`;
+        html1 += `</div></div>`;
         
         // --- Downstream ---
-        html += `
+        html1 += `
           <div style="margin-bottom: 16px; padding: 0 8px;">
             <div style="font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; padding: 4px 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
               <span style="font-size: 8px;">▼</span> ⬇️ DOWNSTREAM DEPENDENTS (${(mod.incoming_modules || []).length})
@@ -1752,24 +1752,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             mod.incoming_modules.forEach(depId => {
               const depMod = (data.modules || []).find(m => m.id === depId);
               const depName = depMod ? depMod.path : depId;
-              html += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
+              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
             });
         } else {
-            html += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No dependents)</div>`;
+            html1 += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No dependents)</div>`;
         }
-        html += `</div></div>`;
+        html1 += `</div></div>`;
         
         // --- AST Tree ---
-        html += `<div style="font-size: 11px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 4px; border-top: 1px solid var(--border); padding-top: 12px; text-transform: uppercase;">🌳 INTRA-FILE AST TREE</div>`;
-        html += `<div style="padding: 0 8px;">`;
+        let html2 = astStyles;
+        html2 += `<div style="font-size: 11px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 12px; text-transform: uppercase;">🌳 INTRA-FILE AST TREE</div>`;
+        html2 += `<div style="padding: 0 8px;">`;
         if (mod.code_flow) {
-            html += renderASTNode(mod.code_flow);
+            html2 += renderASTNode(mod.code_flow);
         } else {
-            html += `<div style="color: var(--text-muted); font-size: 12px;">No AST data available.</div>`;
+            html2 += `<div style="color: var(--text-muted); font-size: 12px;">No AST data available.</div>`;
         }
-        html += `</div>`;
+        html2 += `</div>`;
         
-        document.getElementById('code-file-tree').innerHTML = html;
+        document.getElementById('code-file-tree').innerHTML = html1;
+        document.getElementById('code-ast-tree').innerHTML = html2;
       }
 
 
