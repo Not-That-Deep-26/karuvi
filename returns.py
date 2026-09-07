@@ -109,6 +109,7 @@ class Function:
     signature: str
     flow: DepTree
     uuid: str | None
+    line: int | None
 
     def __init__(
         self,
@@ -116,11 +117,13 @@ class Function:
         signature: str,
         flow: DepTree,
         uuid: str | None = None,
+        line: int | None = None,
     ):
         self.name = name
         self.signature = signature
         self.flow = flow
         self.uuid = uuid
+        self.line = line
 
 
 class Class:
@@ -130,16 +133,19 @@ class Class:
     name: str
     functions: list[Function]
     uuid: str | None
+    line: int | None
 
     def __init__(
         self,
         name: str,
         functions: list[Function] | None = None,
         uuid: str | None = None,
+        line: int | None = None,
     ):
         self.name = name
         self.functions = functions if functions is not None else []
         self.uuid = uuid
+        self.line = line
 
 
 class Module:

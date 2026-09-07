@@ -77,6 +77,7 @@ def build_unified_payload(
                 functions_data.append({
                     "name": f.name,
                     "signature": getattr(f, "signature", ""),
+                    "line": getattr(f, "line", None),
                     "uuid": str(getattr(f, "uuid", "")) if getattr(f, "uuid", None) else None,
                 })
             for c in m_parsed.classes:
@@ -84,12 +85,14 @@ def build_unified_payload(
                     {
                         "name": m.name,
                         "signature": getattr(m, "signature", ""),
+                        "line": getattr(m, "line", None),
                         "uuid": str(getattr(m, "uuid", "")) if getattr(m, "uuid", None) else None,
                     }
                     for m in c.functions
                 ]
                 classes_data.append({
                     "name": c.name,
+                    "line": getattr(c, "line", None),
                     "uuid": str(getattr(c, "uuid", "")) if getattr(c, "uuid", None) else None,
                     "methods": cls_methods,
                 })
@@ -2154,10 +2157,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       }
 
 
-      window.selectModule = function(modId) {
+      window.selectModule = function(modId, revealLine) {
         switchTab('code');
         const mod = (data.modules || []).find(m => m.id === modId);
         if (!mod) return;
+
+        const revealIfRequested = function() {
+          if (revealLine && monacoEditor) {
+            monacoEditor.revealLineInCenter(revealLine);
+            monacoEditor.setPosition({ lineNumber: revealLine, column: 1 });
+            monacoEditor.focus();
+          }
+        };
 
         // Render dependency tree
         renderDependencyTree(mod);
@@ -2184,14 +2195,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     scrollBeyondLastLine: false,
                     padding: { top: 16, bottom: 16 }
                 });
+                revealIfRequested();
             } else {
                 window.monacoEditor = monacoEditor;
                   monacoEditor.setValue(mod.source_code);
                 monacoEditor.setScrollTop(0);
+                revealIfRequested();
             }
           } else {
             codeContentEl.innerHTML = '<div style="padding: 20px; color: #fff; text-align: center; font-family: monospace;">Loading Monaco Editor...</div>';
-            setTimeout(() => window.selectModule(modId), 100);
+            setTimeout(() => window.selectModule(modId, revealLine), 100);
           }
         } else {
           // Fallback summary if source code not cached
@@ -2966,10 +2979,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           }
         });
         (data.modules || []).forEach(m => {
+          const lineSub = (n) => (n && n > 0) ? ` · L${n}` : '';
           (m.functions || []).forEach(f => {
             if (query && f.name.toLowerCase().includes(query)) {
-              results.push({ type: 'Function', label: `${f.name}()`, sub: `in ${m.path}`, action: () => { closeSearch(); window.selectModule(m.id); } });
+              results.push({ type: 'Function', label: `${f.name}()`, sub: `in ${m.path}${lineSub(f.line)}`, action: () => { closeSearch(); window.selectModule(m.id, f.line || undefined); } });
             }
+          });
+          (m.classes || []).forEach(c => {
+            if (query && c.name.toLowerCase().includes(query)) {
+              results.push({ type: 'Class', label: `${c.name}`, sub: `in ${m.path}${lineSub(c.line)}`, action: () => { closeSearch(); window.selectModule(m.id, c.line || undefined); } });
+            }
+            (c.methods || []).forEach(meth => {
+              if (query && meth.name.toLowerCase().includes(query)) {
+                results.push({ type: 'Method', label: `${meth.name}()`, sub: `in ${m.path} · ${c.name}${lineSub(meth.line)}`, action: () => { closeSearch(); window.selectModule(m.id, meth.line || undefined); } });
+              }
+            });
           });
         });
 

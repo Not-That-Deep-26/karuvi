@@ -606,6 +606,7 @@ class ModuleParser:
             signature=f"({', '.join(param_names)})",
             flow=fn_tree,
             uuid=fn_var.uuid,
+            line=fn_var.reference[1] if fn_var.reference else None,
         )
         self.function_objs.append(fn_obj)
 
@@ -688,7 +689,7 @@ class ModuleParser:
                     if parsed_stmt:
                         cls_tree.children.append(parsed_stmt)
 
-        cls_obj = Class(name=cls_name, functions=cls_functions, uuid=cls_var.uuid)
+        cls_obj = Class(name=cls_name, functions=cls_functions, uuid=cls_var.uuid, line=cls_var.reference[1] if cls_var.reference else None)
         self.class_objs.append(cls_obj)
 
         stmt_node.children.append(cls_tree)

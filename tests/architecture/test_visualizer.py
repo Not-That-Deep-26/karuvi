@@ -65,6 +65,7 @@ def test_build_unified_payload(fixtures_dir):
     # 4. Module details
     modules = payload["modules"]
     assert len(modules) == 4
+    seen_symbol_line = None
     for m in modules:
         assert "id" in m
         assert "path" in m
@@ -74,6 +75,19 @@ def test_build_unified_payload(fixtures_dir):
         assert "in_degree" in m
         assert "out_degree" in m
         assert "source_code" in m
+        for f in m.get("functions", []):
+            assert "line" in f
+            if f.get("line"):
+                seen_symbol_line = f["line"]
+        for c in m.get("classes", []):
+            assert "line" in c
+            if c.get("line"):
+                seen_symbol_line = c["line"]
+            for meth in c.get("methods", []):
+                assert "line" in meth
+                if meth.get("line"):
+                    seen_symbol_line = meth["line"]
+    assert seen_symbol_line is not None, "expected at least one symbol with a definition line"
 
     # 5. Entry points and flows
     assert len(payload["entrypoints"]) >= 1
