@@ -116,4 +116,34 @@ def detect_flows(
                     )
                 )
 
+    # 6. Annotate every flow with human-readable names and structural roles so
+    # the UI can render them as labelled lanes (Entry -> ... -> Leaf / Cycle).
+    def _comp_display_name(comp_id: str) -> str:
+        if components is None:
+            return str(comp_id)
+        comp = components.get(comp_id)
+        if comp is None:
+            return str(comp_id)
+        label = comp.metadata.get("distinguishing_label")
+        return f"{comp.name} · {label}" if label else comp.name
+
+    cycle_members: set[str] = set()
+    try:
+        for scc in nx.strongly_connected_components(component_graph):
+            if len(scc) > 1:
+                cycle_members.update(scc)
+    except Exception:
+        pass
+
+    for flow in flows:
+        flow.path_names = [_comp_display_name(cid) for cid in flow.path]
+        flow.start_role = (
+            "Entry" if flow.source in entry_comps
+            else ("Cycle" if flow.source in cycle_members else "")
+        )
+        flow.end_role = (
+            "Leaf" if flow.target in target_comps
+            else ("Cycle" if flow.target in cycle_members else "")
+        )
+
     return flows

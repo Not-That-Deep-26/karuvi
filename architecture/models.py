@@ -86,6 +86,9 @@ class ArchitectureFlow:
     target: str
     path: list[str] = field(default_factory=list)
     evidence: dict[str, Any] = field(default_factory=dict)
+    path_names: list[str] = field(default_factory=list)
+    start_role: str = ""
+    end_role: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -93,6 +96,9 @@ class ArchitectureFlow:
             "target": self.target,
             "path": self.path,
             "evidence": self.evidence,
+            "path_names": self.path_names,
+            "start_role": self.start_role,
+            "end_role": self.end_role,
         }
 
 

@@ -82,3 +82,49 @@ def test_cross_folder_merging():
     assert "auth" in comp.name
     assert "sessions" in comp.name
     assert set(comp.modules) == {"auth/login.py", "sessions/token.py"}
+
+
+def test_folder_split_duplicates_get_distinguishing_labels():
+    """When one folder splits into multiple components, each duplicate-named
+    component must carry a distinct, human-readable distinguishing label."""
+    G = nx.DiGraph()
+    G.add_edge("utils/a.py", "utils/b.py", weight=10)
+    G.add_edge("utils/c.py", "utils/d.py", weight=10)
+
+    module_to_boundary = {
+        "utils/a.py": "utils",
+        "utils/b.py": "utils",
+        "utils/c.py": "utils",
+        "utils/d.py": "utils",
+    }
+    # a & b in community 0, c & d in community 1: folder "utils" is split.
+    module_to_community = {
+        "utils/a.py": 0,
+        "utils/b.py": 0,
+        "utils/c.py": 1,
+        "utils/d.py": 1,
+    }
+
+    components = reconstruct_components(G, module_to_boundary, module_to_community)
+    names = [c.name for c in components.values()]
+    assert names == ["utils", "utils"]
+    labels = [
+        c.metadata.get("distinguishing_label") for c in components.values()
+    ]
+    assert all(labels)
+    assert len(set(labels)) == 2
+
+
+def test_isolated_component_has_neutral_cohesion():
+    """An isolated single-module component must not report 100% confidence;
+    graph cohesion should be neutral so the score reflects real evidence."""
+    G = nx.DiGraph()
+    G.add_node("standalone.py")
+    module_to_boundary = {"standalone.py": "root"}
+    module_to_community = {"standalone.py": 0}
+
+    components = reconstruct_components(G, module_to_boundary, module_to_community)
+    assert len(components) == 1
+    comp = list(components.values())[0]
+    assert comp.metadata["graph_cohesion"] == 0.5
+    assert comp.confidence < 1.0

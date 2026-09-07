@@ -47,6 +47,9 @@ def test_build_unified_payload(fixtures_dir):
     assert summary["total_edges"] >= 3
     assert "total_lines" in summary
     assert "circular_dependencies" in summary
+    assert "total_singleton_components" in summary
+    assert "total_multi_components" in summary
+    assert summary["total_singleton_components"] + summary["total_multi_components"] == summary["total_components"]
 
     # 3. Component details
     components = payload["components"]
@@ -78,6 +81,13 @@ def test_build_unified_payload(fixtures_dir):
     assert "module" in top_entry
     assert "entry_score" in top_entry
     assert "evidence" in top_entry
+
+    # 6. Flows carry human-readable names and roles
+    for flow in payload["flows"]:
+        assert "path_names" in flow
+        assert "start_role" in flow
+        assert "end_role" in flow
+        assert len(flow["path_names"]) == len(flow["path"])
 
 
     # 7. Documentation
@@ -122,6 +132,16 @@ def test_generate_atlas_html(fixtures_dir):
     assert 'id="network-canvas"' in html
     assert 'switchTab(' in html
     assert 'switchTab(' in html
+
+    # Verify graph-view component visibility controls are wired up
+    assert 'id="btn-toggle-comp-vis"' in html
+    assert 'id="btn-comp-vis-all"' in html
+    assert 'id="btn-comp-vis-none"' in html
+    assert 'id="comp-vis-count"' in html
+    assert 'id="comp-vis-panel"' in html
+    assert 'VIS_STANDALONE' in html
+    assert 'buildVisibleModuleSet(' in html
+    assert 'renderCompVisPanel(' in html
 
 
 def test_builder_render_html_integration(fixtures_dir):

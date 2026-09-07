@@ -163,9 +163,22 @@ def build_unified_payload(
     cycles = getattr(repo_builder, "cycles", [])
 
     # 6. Overall Stats
+    comp_nodes_in_graph = set()
+    for edge in comp_edges:
+        comp_nodes_in_graph.add(edge["source"])
+        comp_nodes_in_graph.add(edge["target"])
+    singleton_comps = [
+        c for c in components_list
+        if len(c.get("modules", [])) == 1 and c["id"] not in comp_nodes_in_graph
+    ]
+    multi_comps = [
+        c for c in components_list if c not in singleton_comps
+    ]
     stats = {
         "total_modules": len(modules_list),
         "total_components": len(components_list),
+        "total_singleton_components": len(singleton_comps),
+        "total_multi_components": len(multi_comps),
         "total_symbols": sum(m["function_count"] + m["class_count"] + m["variable_count"] for m in modules_list),
         "total_lines": sum(m["line_count"] for m in modules_list),
         "total_module_edges": len(mod_edges),
@@ -648,6 +661,116 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       line-height: 1.6;
     }
 
+    /* Architecture panel chrome */
+    .arch-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .arch-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .arch-summary {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+    .arch-legend {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px 20px;
+    }
+    .legend-grid strong {
+      color: #e5e5e5;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+    }
+
+    .comp-sublabel {
+      font-size: 11px;
+      color: var(--accent-blue);
+      font-family: 'Fira Code', monospace;
+      opacity: 0.85;
+      margin-top: -4px;
+    }
+    .cohesion-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid;
+      font-family: 'Fira Code', monospace;
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .cohesion-track {
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+    .cohesion-fill { height: 100%; border-radius: 2px; opacity: 0.9; }
+    .comp-why { color: var(--accent-blue); }
+    .comp-conn { font-size: 11px; color: var(--text-muted); }
+    .comp-chip {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin: 2px 2px 0 0;
+      color: var(--text-secondary);
+      font-size: 10.5px;
+    }
+
+    .singleton-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 32px;
+    }
+    .singleton-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.15s ease;
+    }
+    .singleton-item:hover { border-color: var(--accent-blue); background: var(--bg-card); }
+    .singleton-name { font-weight: 600; color: #ddd; font-family: 'Fira Code', monospace; font-size: 11.5px; }
+    .singleton-mods { color: var(--text-muted); font-family: 'Fira Code', monospace; font-size: 11px; text-align: right; }
+
+    /* Flows */
+    .flow-role {
+      flex-shrink: 0;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid;
+    }
+    .role-entry { color: var(--accent-blue); border-color: var(--accent-blue); background: rgba(56,189,248,0.08); }
+    .role-leaf { color: var(--accent-green); border-color: var(--accent-green); background: rgba(16,185,129,0.08); }
+    .role-cycle { color: var(--accent-rose); border-color: var(--accent-rose); background: rgba(244,63,94,0.08); }
+    .flow-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+    .flow-algo { font-size: 10px; color: var(--text-muted); font-family: 'Fira Code', monospace; }
+
     /* Flows */
     .flows-container {
       display: flex;
@@ -665,7 +788,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       align-items: center;
       gap: 12px;
       font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
     }
+    .flow-row:hover { border-color: var(--accent-blue); background: var(--bg-card); }
 
     .flow-node-badge {
       background: var(--bg-card);
@@ -852,6 +978,56 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       border-radius: 8px;
       padding: 6px 12px;
     }
+
+    .vis-controls { position: relative; }
+    .vis-toolbar { display: flex; align-items: center; gap: 8px; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .vis-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+    .comp-vis-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 20;
+      min-width: 280px;
+      max-width: 360px;
+      max-height: 320px;
+      overflow-y: auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    .comp-vis-panel::-webkit-scrollbar { width: 8px; }
+    .comp-vis-panel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+    .comp-vis-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .comp-vis-item:hover { background: rgba(255, 255, 255, 0.05); }
+    .comp-vis-item input { accent-color: var(--accent-blue); margin-right: 6px; flex-shrink: 0; }
+    .comp-vis-name { flex: 1; color: #ddd; font-family: 'Fira Code', monospace; font-size: 11.5px; line-height: 1.4; }
+    .comp-vis-n { color: var(--text-muted); font-size: 10.5px; font-family: 'Fira Code', monospace; flex-shrink: 0; }
+    .comp-vis-group-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 6px 8px 2px;
+    }
+    .vis-empty { padding: 10px 8px; color: var(--text-muted); font-size: 11.5px; }
 
     .pill-group {
       display: flex;
@@ -1245,11 +1421,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .btn-primary:hover { background: #ededed; transform: none; }
       .btn-secondary { background: #1c1c1c; border-color: #363636; border-radius: 4px; }
       .btn-secondary:hover { border-color: #555; background: #252525; }
-      .confidence-high, .confidence-med, .confidence-low, .flow-node-badge, .pill-tag, .role-badge { background: #252525 !important; color: #bdbdbd !important; border-color: #444 !important; }
+      .confidence-high, .confidence-med, .confidence-low, .cohesion-badge, .comp-chip, .singleton-item, .flow-node-badge, .flow-role, .pill-tag, .role-badge { background: #252525 !important; color: #bdbdbd !important; border-color: #444 !important; }
       .onboard-sidebar, .onboard-main { background: #171717; border-color: #2c2c2c; border-radius: 5px; }
       .step-item-card.active { background: #222; border-color: #4a4a4a; box-shadow: none; }
       .graph-canvas-container { background: #101010; }
       .graph-floating-controls { background: rgba(20,20,20,.94); border-color: #333; border-radius: 5px; backdrop-filter: none; }
+      .comp-vis-panel { background: #1c1c1c; border-color: #333; border-radius: 5px; box-shadow: none; }
+      .comp-vis-item:hover { background: #242424; }
+      .comp-vis-n, .vis-count { color: #999; }
       .pill-opt.active { background: #bdbdbd; color: #111; }
       #graph-role-filters .pill-opt { display: inline-flex; align-items: center; transition: all 0.15s ease; }
       #graph-role-filters .pill-opt.active { background: #2a2a2a !important; color: #fff !important; box-shadow: 0 0 0 1px #555; }
@@ -1350,8 +1529,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
       <!-- VIEW 3: ARCHITECTURE -->
       <div class="tab-view" id="tab-architecture">
-        <div class="section-title">️ Discovered Architectural Components</div>
+        <div class="arch-header">
+          <div>
+            <div class="section-title" style="margin-bottom: 4px;">Architectural Components</div>
+            <div class="arch-summary" id="arch-summary"></div>
+          </div>
+          <div class="arch-actions">
+            <button class="btn-secondary" id="btn-toggle-singletons" style="display: none;"></button>
+            <button class="btn-secondary" id="btn-arch-legend">What am I looking at?</button>
+          </div>
+        </div>
+
+        <div class="arch-legend" id="arch-legend" style="display: none;"></div>
+
+        <div class="section-title">Main Components</div>
         <div class="comp-grid" id="arch-components-grid"></div>
+
+        <div id="singletons-section" style="display: none;">
+          <div class="section-title">Standalone Files</div>
+          <div class="singleton-list" id="singletons-list"></div>
+        </div>
 
         <div class="section-title">High-Level Architectural Flows</div>
         <div class="flows-container" id="arch-flows-container"></div>
@@ -1377,6 +1574,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-calls" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#38bdf8;"></span>Calls</label>
                 <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-imports" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#c084fc;"></span>Imports</label>
                 <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-refs" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#34d399;"></span>References</label>
+              </div>
+              <div class="vis-controls">
+                <div class="vis-toolbar">
+                  <button class="btn-secondary btn-sm" id="btn-toggle-comp-vis">☰ Components</button>
+                  <button class="btn-secondary btn-sm" id="btn-comp-vis-all">Select all</button>
+                  <button class="btn-secondary btn-sm" id="btn-comp-vis-none">Unselect all</button>
+                  <span class="vis-count" id="comp-vis-count"></span>
+                </div>
+                <div class="comp-vis-panel" id="comp-vis-panel" style="display: none;"></div>
               </div>
             </div>
             <div id="network-canvas"></div>
@@ -1555,36 +1761,142 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       // 3. Architecture Tab
       // -------------------------------------------------------------
       const compGrid = document.getElementById('arch-components-grid');
-      compGrid.innerHTML = (data.components || []).map(c => {
+      const archSummary = document.getElementById('arch-summary');
+      const singletonsSection = document.getElementById('singletons-section');
+      const singletonsList = document.getElementById('singletons-list');
+      const singletonsBtn = document.getElementById('btn-toggle-singletons');
+      const archLegend = document.getElementById('arch-legend');
+      document.getElementById('btn-arch-legend').addEventListener('click', () => {
+        archLegend.style.display = archLegend.style.display === 'none' ? 'block' : 'none';
+      });
+
+      const METHOD_LABELS = {
+        'GRAPH_COMMUNITY': 'Grouped by heavy inner connections',
+        'STRUCTURAL_BOUNDARY': 'Grouped by shared folder',
+        'BOUNDARY_AND_COMMUNITY': 'Folder and connections agree',
+        'SINGLETON': 'Single file',
+      };
+      function methodLabel(m) {
+        return METHOD_LABELS[m] || String(m).toLowerCase().replace(/_/g, ' ');
+      }
+      function compDisplayName(c) {
+        const label = (c.metadata || {}).distinguishing_label;
+        return label ? `${c.name} · ${label}` : c.name;
+      }
+      function cohesionColor(pct) {
+        if (pct >= 70) return 'var(--accent-green)';
+        if (pct >= 40) return 'var(--accent-amber)';
+        return 'var(--accent-rose)';
+      }
+
+      function componentCard(c) {
         const confPct = Math.round((c.confidence || 0) * 100);
-        const confClass = confPct >= 70 ? 'confidence-high' : (confPct >= 40 ? 'confidence-med' : 'confidence-low');
-        const sampleMods = (c.modules || []).slice(0, 3).map(m => m.split('/').pop()).join(', ');
-        const extra = c.modules.length > 3 ? ` (+${c.modules.length - 3} more)` : '';
+        const color = cohesionColor(confPct);
+        const meta = c.metadata || {};
+        const label = meta.distinguishing_label;
+        const mods = c.modules || [];
+        const why = (c.discovery_methods || []).map(methodLabel).join(', ') || 'No discovery evidence';
+        const intW = meta.internal_weight || 0;
+        const extW = meta.external_weight || 0;
+        const connLine = (intW || extW)
+          ? `<span>${intW} internal vs ${extW} external connections</span>`
+          : `<span>No cross-module connections recorded</span>`;
         return `
           <div class="comp-card" onclick="window.inspectComponent('${c.id}')">
             <div class="comp-card-header">
               <span class="comp-name">${c.name}</span>
-              <span class="confidence-badge ${confClass}">${confPct}% confidence</span>
+              <span class="cohesion-badge" style="color:${color}; border-color:${color};">${confPct}% cohesion</span>
             </div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
-              ${c.modules.length} module${c.modules.length === 1 ? '' : 's'} • ${(c.discovery_methods || []).join(', ')}
+            ${label ? `<div class="comp-sublabel">${label}</div>` : ''}
+            <div class="cohesion-track"><div class="cohesion-fill" style="width:${confPct}%; background:${color};"></div></div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+              ${mods.length} module${mods.length === 1 ? '' : 's'} • <span class="comp-why">${why}</span>
             </div>
-            <div class="comp-modules-list">${sampleMods}${extra}</div>
+            <div class="comp-conn">${connLine}</div>
+            <div class="comp-modules-list">
+              ${mods.map(m => `<span class="comp-chip">${m.split('/').pop()}</span>`).join('')}
+            </div>
           </div>
         `;
-      }).join('');
+      }
+
+      const compInGraph = new Set();
+      (data.component_edges || []).forEach(e => { if (e) { compInGraph.add(e.source); compInGraph.add(e.target); } });
+      const isSingleton = c => (c.modules || []).length === 1 && !compInGraph.has(c.id);
+      const sortComps = (a, b) => {
+        const sa = (a.modules || []).length, sb = (b.modules || []).length;
+        if (sa !== sb) return sb - sa;
+        const ia = (a.metadata || {}).internal_weight || 0, ib = (b.metadata || {}).internal_weight || 0;
+        if (ia !== ib) return ib - ia;
+        return compDisplayName(a).localeCompare(compDisplayName(b));
+      };
+      const allComps = [...(data.components || [])];
+      const multiComps = allComps.filter(c => !isSingleton(c)).sort(sortComps);
+      const singletonComps = allComps.filter(isSingleton).sort((a, b) => compDisplayName(a).localeCompare(compDisplayName(b)));
+
+      let showSingletons = false;
+      function renderArchPanel() {
+        compGrid.innerHTML = multiComps.map(componentCard).join('');
+        singletonsSection.style.display = showSingletons && singletonComps.length ? 'block' : 'none';
+        singletonsBtn.style.display = singletonComps.length ? 'inline-block' : 'none';
+        singletonsBtn.textContent = `${showSingletons ? 'Hide' : 'Show'} standalone file${singletonComps.length === 1 ? '' : 's'} (${singletonComps.length})`;
+        singletonsList.innerHTML = singletonComps.map(s => `
+          <div class="singleton-item" onclick="window.inspectComponent('${s.id}')">
+            <span class="singleton-name">${compDisplayName(s)}</span>
+            <span class="singleton-mods">${(s.modules || []).map(m => m.split('/').pop()).join(', ')}</span>
+          </div>
+        `).join('');
+
+        let summary = `${multiComps.length} main component${multiComps.length === 1 ? '' : 's'}`;
+        if (singletonComps.length) summary += ` · ${singletonComps.length} standalone file${singletonComps.length === 1 ? '' : 's'}`;
+        const biggest = multiComps[0];
+        if (biggest) summary += ` · largest: ${compDisplayName(biggest)} (${(biggest.modules || []).length} modules)`;
+        archSummary.textContent = summary;
+
+        archLegend.innerHTML = `
+          <div class="legend-grid">
+            <div><strong>Component</strong><br>A group of files that Karuvi believes belong together.</div>
+            <div><strong>Cohesion %</strong><br>How strongly the folder evidence and the dependency evidence agree the group is real.</div>
+            <div><strong>Boundary</strong><br>The folder a file lives in — the "location" evidence.</div>
+            <div><strong>Community</strong><br>Files that depend heavily on each other — the "who talks to whom" evidence.</div>
+            <div><strong>Standalone file</strong><br>A single file that didn't group with anything. Not a design pattern — just a lone file.</div>
+            <div><strong>Flow</strong><br>A common journey across components, from an entry point to an endpoint (leaf).</div>
+          </div>
+        `;
+      }
+      singletonsBtn.addEventListener('click', () => {
+        showSingletons = !showSingletons;
+        renderArchPanel();
+      });
+      renderArchPanel();
 
       const flowsContainer = document.getElementById('arch-flows-container');
+      const flowRoleBadge = (role) => {
+        if (role === 'Entry') return `<span class="flow-role role-entry">Entry</span>`;
+        if (role === 'Leaf') return `<span class="flow-role role-leaf">Leaf</span>`;
+        if (role === 'Cycle') return `<span class="flow-role role-cycle">Cycle</span>`;
+        return '';
+      };
       if (data.flows && data.flows.length > 0) {
-        flowsContainer.innerHTML = data.flows.map(f => {
-          const pathHtml = f.path.map((step, idx) => `
+        flowsContainer.innerHTML = data.flows.map((f, fi) => {
+          const steps = f.path_names || f.path || [];
+          const chain = steps.map((step, idx) => `
             <span class="flow-node-badge">${step}</span>
-            ${idx < f.path.length - 1 ? '<span class="flow-arrow">→</span>' : ''}
+            ${idx < steps.length - 1 ? '<span class="flow-arrow">→</span>' : ''}
           `).join('');
+          const algo = (f.evidence || {}).algorithm === 'direct_edge'
+            ? 'Direct dependency'
+            : 'Shortest route entry → endpoint';
+          const hops = (f.evidence || {}).hop_count;
+          const targetId = (f.path && f.path.length) ? f.path[0] : '';
           return `
-            <div class="flow-row">
-              <div style="flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                ${pathHtml}
+            <div class="flow-row" title="Open in Graph Explorer" onclick="${targetId ? `window.inspectComponent('${targetId}')` : ''}">
+              ${flowRoleBadge(f.start_role)}
+              <div style="flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">${chain}</div>
+              ${flowRoleBadge(f.end_role)}
+              <div class="flow-meta">
+                <span class="flow-algo">${algo}</span>
+                ${hops != null ? `<span class="flow-algo">${hops} hop${hops === 1 ? '' : 's'}</span>` : ''}
               </div>
             </div>
           `;
@@ -1912,6 +2224,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       let unfoldedComponents = new Set();
       let selectedNodeId = null;
 
+      // -------------------------------------------------------------
+      // Component visibility (graph view only): hide groups of modules
+      // -------------------------------------------------------------
+      const VIS_STANDALONE = '__standalone__';
+      const compEdgeIds = new Set();
+      (data.component_edges || []).forEach(e => { if (e) { compEdgeIds.add(e.source); compEdgeIds.add(e.target); } });
+      const singletonCompIds = new Set(
+        (data.components || [])
+          .filter(c => (c.modules || []).length === 1 && !compEdgeIds.has(c.id))
+          .map(c => c.id)
+      );
+      const moduleGroup = function(m) {
+        const cid = m.component_id || m.id;
+        if (!cid || cid === 'core' || singletonCompIds.has(cid)) return VIS_STANDALONE;
+        return cid;
+      };
+      const visibleComponents = new Set(
+        [VIS_STANDALONE].concat((data.components || []).map(c => c.id))
+      );
+      function buildVisibleModuleSet() {
+        const set = new Set();
+        (data.modules || []).forEach(m => {
+          if (visibleComponents.has(moduleGroup(m))) set.add(m.id);
+        });
+        return set;
+      }
+
+      function compVisTitle(c) {
+        const label = (c.metadata || {}).distinguishing_label;
+        return label ? `${c.name} · ${label}` : c.name;
+      }
+
       const container = document.getElementById('network-canvas');
 
       const cyclesSet = new Set();
@@ -2081,7 +2425,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           }
 
         } else if (level === 'modules') {
+          const visibleModuleSet = buildVisibleModuleSet();
           (data.modules || []).forEach(m => {
+            if (!visibleModuleSet.has(m.id)) return;
             const inCycle = cyclesSet.has(m.id) || m.role === 'CYCLE_MEMBER';
             const roleKey = inCycle ? 'CYCLE_MEMBER' : (m.role || 'MODULE');
             const col = getModuleRoleColors(roleKey, inCycle);
@@ -2111,6 +2457,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           });
 
           (data.module_edges || []).forEach(e => {
+            if (!visibleModuleSet.has(e.source) || !visibleModuleSet.has(e.target)) return;
             const types = e.relationship_types || {};
             const isCall = Boolean(types.CALL);
             const isImport = Boolean(types.IMPORT);
@@ -2470,6 +2817,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       window.jumpToGraphNode = function(modId) {
         switchTab('graph');
         currentLevel = 'modules';
+        const mod = (data.modules || []).find(m => m.id === modId);
+        if (mod) {
+          visibleComponents.add(moduleGroup(mod));
+          renderCompVisPanel();
+        }
         updateNetworkData();
         setTimeout(() => {
           if (network) {
@@ -2483,6 +2835,85 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       ['chk-filter-calls', 'chk-filter-imports', 'chk-filter-refs'].forEach(id => {
         document.getElementById(id).addEventListener('change', updateNetworkData);
       });
+
+      // -------------------------------------------------------------
+      // Component visibility toolbar (graph view only)
+      // -------------------------------------------------------------
+      const compVisPanel = document.getElementById('comp-vis-panel');
+      const compVisCountEl = document.getElementById('comp-vis-count');
+      const toggleCompVisBtn = document.getElementById('btn-toggle-comp-vis');
+      let compVisOpen = false;
+
+      function refreshCompVisCounter() {
+        const multiComps = (data.components || []).filter(c => !singletonCompIds.has(c.id));
+        const hasStandalone = (data.modules || []).some(m => moduleGroup(m) === VIS_STANDALONE);
+        const total = multiComps.length + (hasStandalone ? 1 : 0);
+        let visible = multiComps.filter(c => visibleComponents.has(c.id)).length;
+        if (hasStandalone && visibleComponents.has(VIS_STANDALONE)) visible += 1;
+        compVisCountEl.textContent = `${visible}/${total} visible`;
+      }
+
+      function renderCompVisPanel() {
+        const multiComps = (data.components || []).filter(c => !singletonCompIds.has(c.id));
+        const standaloneCount = (data.modules || []).filter(m => moduleGroup(m) === VIS_STANDALONE).length;
+        let html = '';
+        if (multiComps.length) {
+          html += '<div class="comp-vis-group-label">Components</div>';
+          html += multiComps.map(c => `
+            <label class="comp-vis-item">
+              <input type="checkbox" data-group="${c.id}" ${visibleComponents.has(c.id) ? 'checked' : ''}>
+              <span class="comp-vis-name" title="${(c.modules || []).join(', ')}">${compVisTitle(c)}</span>
+              <span class="comp-vis-n">${(c.modules || []).length}</span>
+            </label>
+          `).join('');
+        }
+        html += '<div class="comp-vis-group-label">Standalone</div>';
+        html += `<label class="comp-vis-item">
+              <input type="checkbox" data-group="${VIS_STANDALONE}" ${visibleComponents.has(VIS_STANDALONE) ? 'checked' : ''}>
+              <span class="comp-vis-name" title="Single files that did not group with anything">Standalone files</span>
+              <span class="comp-vis-n">${standaloneCount}</span>
+            </label>`;
+        if (!multiComps.length && !standaloneCount) {
+          html = '<div class="vis-empty">No components to hide.</div>';
+        }
+        compVisPanel.innerHTML = html;
+        refreshCompVisCounter();
+      }
+
+      toggleCompVisBtn.addEventListener('click', () => {
+        compVisOpen = !compVisOpen;
+        compVisPanel.style.display = compVisOpen ? 'block' : 'none';
+        if (compVisOpen) renderCompVisPanel();
+      });
+      document.addEventListener('click', (e) => {
+        const visControls = document.querySelector('.vis-controls');
+        if (compVisOpen && visControls && !visControls.contains(e.target)) {
+          compVisOpen = false;
+          compVisPanel.style.display = 'none';
+        }
+      });
+      compVisPanel.addEventListener('change', (e) => {
+        const box = e.target;
+        if (box && box.dataset && box.dataset.group) {
+          if (box.checked) visibleComponents.add(box.dataset.group);
+          else visibleComponents.delete(box.dataset.group);
+          renderCompVisPanel();
+          updateNetworkData();
+        }
+      });
+      document.getElementById('btn-comp-vis-all').addEventListener('click', () => {
+        visibleComponents.clear();
+        (data.components || []).forEach(c => visibleComponents.add(c.id));
+        visibleComponents.add(VIS_STANDALONE);
+        renderCompVisPanel();
+        updateNetworkData();
+      });
+      document.getElementById('btn-comp-vis-none').addEventListener('click', () => {
+        visibleComponents.clear();
+        renderCompVisPanel();
+        updateNetworkData();
+      });
+      renderCompVisPanel();
 
       // -------------------------------------------------------------
       // 7. Global Search Modal (Cmd+K)

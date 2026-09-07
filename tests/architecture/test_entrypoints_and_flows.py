@@ -43,3 +43,27 @@ def test_detect_flows():
     assert main_flow.source == "api"
     assert main_flow.target == "db"
     assert main_flow.path == ["api", "services", "db"]
+
+
+def test_flows_carry_human_names_and_roles():
+    """Flows should expose human-readable component names plus entry/leaf roles."""
+    CG = nx.DiGraph()
+    CG.add_edge("api", "services", weight=5)
+    CG.add_edge("services", "db", weight=3)
+
+    entry_points = [{"module": "api/main.py"}]
+    components = {
+        "api": Component(
+            id="api", name="api", modules=["api/main.py"],
+            metadata={"distinguishing_label": "main"},
+        ),
+        "services": Component(id="services", name="services", modules=["services/auth.py"]),
+        "db": Component(id="db", name="db", modules=["db/users.py"]),
+    }
+
+    flows = detect_flows(CG, entry_points, components, max_flows=5)
+    assert len(flows) >= 1
+    main_flow = flows[0]
+    assert main_flow.path_names == ["api · main", "services", "db"]
+    assert main_flow.start_role == "Entry"
+    assert main_flow.end_role == "Leaf"

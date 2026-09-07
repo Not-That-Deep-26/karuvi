@@ -59,8 +59,9 @@ def calculate_graph_cohesion(
 
     total_weight = internal_weight + external_weight
     if total_weight == 0:
-        # Isolated component or no edges
-        return 1.0 if len(modules) == 1 else 0.5, 0, 0
+        # No edges: no structural evidence either way — score as neutral,
+        # not maximally certain (a lone file is not proof of strong cohesion).
+        return 0.5, 0, 0
 
     ratio = internal_weight / total_weight
     return ratio, internal_weight, external_weight
@@ -91,6 +92,36 @@ def calculate_agreement(
         return 0.5
     else:
         return 0.2
+
+
+def _derive_component_label(
+    modules: list[str],
+    community_id: int | None,
+    used_labels: set[str],
+) -> str:
+    """
+    Derives a deterministic, human-readable distinguishing label for a component
+    whose name collides with other components (e.g. folder-splitting can produce
+    several components all named after the same boundary directory).
+
+    Priority: first N module stems -> first N module stems (wider) -> a unique
+    community fallback. Always returns a label unique within ``used_labels``.
+    """
+    stems = [Path(m).stem for m in modules]
+    candidates = []
+    if stems:
+        candidates.append(", ".join(stems[:3]))
+        candidates.append(", ".join(stems[:8]))
+    if community_id is not None:
+        candidates.append(f"community {community_id}")
+    for cand in candidates:
+        if cand and cand not in used_labels:
+            return cand
+    base = "community" if community_id is None else f"community {community_id}"
+    counter = 1
+    while f"{base} ({counter})" in used_labels:
+        counter += 1
+    return f"{base} ({counter})"
 
 
 def derive_component_name(
@@ -264,7 +295,26 @@ def reconstruct_components(
                 "graph_cohesion": round(graph_cohesion, 3),
                 "agreement": round(agreement, 3),
                 "module_count": len(comp_mods),
+                "community_id": first_comm,
             },
         )
+
+    # Post-pass: when several components share the same name (folder splitting),
+    # stamp each with a human-readable distinguishing label so the UI can tell
+    # them apart without exposing raw internal IDs.
+    name_groups: dict[str, list[str]] = defaultdict(list)
+    for comp_id, comp in components.items():
+        name_groups[comp.name].append(comp_id)
+
+    for _name, comp_ids in name_groups.items():
+        if len(comp_ids) <= 1:
+            continue
+        used_labels: set[str] = set()
+        for comp_id in comp_ids:
+            comp = components[comp_id]
+            community_id = comp.metadata.get("community_id")
+            label = _derive_component_label(comp.modules, community_id, used_labels)
+            used_labels.add(label)
+            comp.metadata["distinguishing_label"] = label
 
     return components
