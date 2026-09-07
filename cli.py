@@ -129,8 +129,6 @@ def display_commands_table():
     commands = [
         ("karuvi <repo>", "Scan repository, build graph, and display dashboard", "uv run karuvi /path/to/repo"),
         ("onboard, --onboard", "Progressive reading roadmap with complexity tiers", "uv run karuvi <repo> onboard --level beginner"),
-        ("explain, --explain", "Multi-level DeepWiki progressive technical explanation", "uv run karuvi <repo> explain [repo|arch|<file>]"),
-        ("--why <src> <tgt>", "Explain why source module depends on target module", "uv run karuvi <repo> --why src/api.py src/auth.py"),
         ("explore, --explore", "Generate and open Living Codebase Atlas in browser", "uv run karuvi <repo> explore"),
         ("--tree, -t <file>", "Print aesthetic ASCII intra-file AST & code flow tree", "uv run karuvi <repo> -t src/app.py"),
         ("--deps <file>", "Print upstream imports & downstream dependents tree", "uv run karuvi <repo> --deps src/app.py"),
@@ -466,7 +464,6 @@ def interactive_menu(
                 "[bold cyan][7][/bold cyan] 🌐 Export Living Atlas HTML    "
                 "[bold cyan][8][/bold cyan] 💾 Export JSON Report\n"
                 "[bold cyan][9][/bold cyan] 🎓 Onboarding Reading Order    "
-                "[bold cyan][10][/bold cyan] 📖 DeepWiki Technical Guide\n"
                 "[bold cyan][?] [/bold cyan] 🛠️  Show Commands Reference    "
                 "[bold red][q][/bold red] Exit",
                 title="[bold]Karuvi Interactive Menu[/bold]",
@@ -537,10 +534,6 @@ def interactive_menu(
             arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
             plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
             render_onboarding_course(plan, level="beginner")
-        elif choice == "10":
-            from architecture.analyzer import ArchitectureAnalyzer
-            arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
-            render_deepwiki_explanation("repo", arch_model, builder, level="beginner")
         console.print()
 
 
@@ -716,87 +709,6 @@ def render_onboarding_course(plan: Any, level: str = "beginner"):
         console.print()
 
 
-def render_deepwiki_explanation(
-    topic: str,
-    arch_model: Any,
-    repo_builder: Any,
-    level: str = "beginner",
-):
-    """Renders multi-level DeepWiki progressive technical explanations."""
-    from architecture.explanation import ExplanationEngine
-
-    engine = ExplanationEngine()
-    topic_clean = topic.strip().lower()
-
-    if topic_clean in ("repo", "overview", "all", "."):
-        doc = engine.explain_repository(arch_model, repo_builder)
-        console.print(Panel(Markdown(doc), title="[bold cyan]📖 DeepWiki — Repository Technical Guide[/bold cyan]", border_style="cyan"))
-    elif topic_clean in ("arch", "architecture", "subsystems"):
-        doc = engine.explain_architecture(arch_model)
-        console.print(Panel(Markdown(doc), title="[bold cyan]🏛️ DeepWiki — Architectural Subsystems & Flow[/bold cyan]", border_style="magenta"))
-    else:
-        # Match against module paths or names
-        matched_mod = None
-        for m_id in arch_model.modules:
-            if topic == m_id or topic in m_id or Path(m_id).name == topic or Path(m_id).stem == topic:
-                matched_mod = m_id
-                break
-
-        if matched_mod:
-            mod_doc = engine.explain_module(matched_mod, arch_model, repo_builder)
-            mod_table = Table.grid(padding=(0, 2))
-            mod_table.add_column(style="bold cyan", width=18)
-            mod_table.add_column(style="white")
-
-            mod_table.add_row("File Path:", f"[bold white]{mod_doc['path']}[/bold white]")
-            mod_table.add_row("Role:", f"[yellow]{mod_doc['role']}[/yellow] — {mod_doc['role_description']}")
-            mod_table.add_row("Primary Purpose:", mod_doc['purpose'])
-
-            in_deps = ", ".join(f"[green]{d}[/green]" for d in mod_doc['incoming_dependents']) if mod_doc['incoming_dependents'] else "[dim]None (Root / Unused)[/dim]"
-            out_deps = ", ".join(f"[blue]{d}[/blue]" for d in mod_doc['outgoing_dependencies']) if mod_doc['outgoing_dependencies'] else "[dim]None (Leaf)[/dim]"
-            mod_table.add_row("Imported By:", in_deps)
-            mod_table.add_row("Depends On:", out_deps)
-
-            if mod_doc.get("invariants"):
-                mod_table.add_row("Invariants:", " • ".join(mod_doc["invariants"]))
-            if mod_doc.get("failure_modes"):
-                mod_table.add_row("Failure Modes:", " • ".join(mod_doc["failure_modes"]))
-
-            console.print(Panel(mod_table, title=f"[bold cyan]🔍 DeepWiki Module Explanation: {matched_mod}[/bold cyan]", border_style="cyan"))
-        else:
-            console.print(f"[bold red]Error:[/bold red] Module or explanation target [yellow]{topic}[/yellow] not found in parsed modules.")
-
-
-def render_relationship_explanation(
-    source: str,
-    target: str,
-    arch_model: Any,
-    repo_builder: Any,
-):
-    """Explains why a direct dependency exists between two modules."""
-    from architecture.explanation import ExplanationEngine
-
-    engine = ExplanationEngine()
-    rel = engine.explain_relationship(source, target, arch_model, repo_builder)
-
-    table = Table.grid(padding=(0, 2))
-    table.add_column(style="bold cyan", width=20)
-    table.add_column(style="white")
-
-    table.add_row("Source Module:", rel.source)
-    table.add_row("Target Module:", rel.target)
-    table.add_row("Architectural Intent:", f"[bold green]{rel.architectural_intent}[/bold green]")
-    table.add_row("Summary:", rel.summary)
-
-    if rel.imported_symbols:
-        table.add_row("Imported Symbols:", ", ".join(f"[yellow]{s}[/yellow]" for s in rel.imported_symbols))
-    if rel.call_occurrences:
-        call_strs = [f"line {c.get('line', '?')}: {c.get('symbol', 'call')}" for c in rel.call_occurrences[:8]]
-        table.add_row("Call Sites:", ", ".join(call_strs))
-
-    console.print(Panel(table, title=f"[bold cyan]🔗 Dependency Intent: {rel.source} ➔ {rel.target}[/bold cyan]", border_style="green"))
-
-
 def main():
     console.print(ASCII_BANNER)
 
@@ -821,13 +733,7 @@ def main():
             if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
                 repo_val = sys.argv.pop(2)
                 sys.argv.extend(["--repo", repo_val])
-                if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
-                    target_val = sys.argv.pop(2)
-                    sys.argv[1] = f"--explain={target_val}"
-                else:
-                    sys.argv[1] = "--explain=repo"
-            else:
-                sys.argv[1] = "--explain=repo"
+                pass
         elif cmd == "analyze":
             sys.argv.pop(1)
 
@@ -860,20 +766,6 @@ def main():
         choices=["beginner", "intermediate", "advanced"],
         default="beginner",
         help="Complexity level for onboarding and explanations (default: beginner)",
-    )
-    parser.add_argument(
-        "--explain",
-        nargs="?",
-        const="repo",
-        default=None,
-        help="Generate multi-level DeepWiki explanation (Level 1: repo overview, Level 2: 'arch', Level 3: module path)",
-    )
-    parser.add_argument(
-        "--why",
-        nargs=2,
-        metavar=("SOURCE", "TARGET"),
-        default=None,
-        help="Explain architectural intent and dependency relationship between SOURCE and TARGET modules",
     )
     parser.add_argument(
         "--explore",
@@ -1098,14 +990,12 @@ def main():
             console.print(f"[bold red]Error:[/bold red] File {args.chart} not found in parsed modules.")
 
     arch_model = None
-    # Reconstructed Architecture Mode & DeepWiki Features
+    # Reconstructed Architecture Mode 
     needs_arch_model = bool(
         args.architecture
         or args.arch_json
         or args.arch_doc
         or args.onboard
-        or (args.explain is not None)
-        or args.why
         or args.explore
     )
     if needs_arch_model:
@@ -1135,11 +1025,7 @@ def main():
             plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
             render_onboarding_course(plan, level=args.level)
 
-        if args.explain is not None:
-            render_deepwiki_explanation(args.explain, arch_model, builder, level=args.level)
 
-        if args.why:
-            render_relationship_explanation(args.why[0], args.why[1], arch_model, builder)
 
         if args.explore:
             import webbrowser
@@ -1165,8 +1051,6 @@ def main():
         or args.chart
         or args.architecture
         or args.onboard
-        or (args.explain is not None)
-        or args.why
         or args.explore
     )
 

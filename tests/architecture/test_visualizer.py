@@ -79,16 +79,6 @@ def test_build_unified_payload(fixtures_dir):
     assert "entry_score" in top_entry
     assert "evidence" in top_entry
 
-    # 6. DeepWiki-Pro-Max: Onboarding Course & DeepWiki Explanations
-    assert "onboarding" in payload
-    assert "steps" in payload["onboarding"]
-    assert len(payload["onboarding"]["steps"]) == 4
-
-    assert "deepwiki" in payload
-    assert "repository" in payload["deepwiki"]
-    assert "architecture" in payload["deepwiki"]
-    assert "modules" in payload["deepwiki"]
-    assert len(payload["deepwiki"]["modules"]) == 4
 
     # 7. Documentation
     assert len(payload["documentation_md"]) > 100
@@ -127,14 +117,11 @@ def test_generate_atlas_html(fixtures_dir):
     assert 'id="tab-architecture"' in html
     assert 'id="tab-graph"' in html
     assert 'id="tab-code"' in html
-    assert 'id="tab-docs"' in html
     assert 'id="search-modal-overlay"' in html
     assert 'id="global-search-input"' in html
     assert 'id="network-canvas"' in html
     assert 'switchTab(' in html
-    assert 'window.switchView' in html
-    assert 'toggleUnfold(' in html
-    assert 'unfoldedComponents' in html
+    assert 'switchTab(' in html
 
 
 def test_builder_render_html_integration(fixtures_dir):

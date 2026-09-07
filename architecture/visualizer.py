@@ -1,15 +1,13 @@
 """
-Karuvi Living Codebase Atlas — Unified Web Visualizer & DeepWiki-Pro-Max
+Karuvi Living Codebase Atlas — Unified Web Visualizer
 ========================================================================
 
 Generates a standalone, interactive, dark-mode Single Page Web Application
 embodying Karuvi's 6 core modes:
 1. ◉ Overview: Executive codebase dashboard, vital metrics, and circular loop radar.
-2. 🎓 Teach Me / Onboarding: Interactive step-by-step codebase course with complexity toggles.
 3. 🏛️ Architecture: Discovered components, confidence scores, and architectural flows.
 4. 🕸️ Graph Explorer: Progressive graph disclosure, relation filters, and unrelated node greying.
 5. 📁 Code Explorer: Sourcetrail-grade side-by-side file tree and syntax-highlighted code viewer.
-6. 📖 DeepWiki Docs: Multi-level technical documentation (Levels 1–5).
 """
 from __future__ import annotations
 
@@ -20,9 +18,7 @@ from typing import Any
 
 from architecture.analyzer import ArchitectureAnalyzer
 from architecture.documentation import generate_architecture_markdown
-from architecture.explanation import ExplanationEngine
 from architecture.models import ArchitectureModel
-from architecture.onboarding import CodebaseOnboardingEngine
 
 
 def build_unified_payload(
@@ -31,7 +27,7 @@ def build_unified_payload(
 ) -> dict[str, Any]:
     """
     Assembles a unified data contract combining Stage 1 (AST, symbols, references, cycles)
-    and Stage 2 (components, module graph, metrics, roles, entrypoints, flows, onboarding, DeepWiki).
+    and Stage 2 (components, module graph, metrics, roles, entrypoints, flows, onboarding).
     """
     repo_root = Path(repo_builder.project_root).resolve()
     if arch_model is None:
@@ -174,18 +170,6 @@ def build_unified_payload(
         "circular_dependencies": len(cycles),
     }
 
-    # 7. Onboarding Reading Plan
-    onboarding_plan = CodebaseOnboardingEngine(arch_model, repo_builder).build_plan()
-
-    # 8. DeepWiki Explanations (Levels 1 to 5)
-    explanation_engine = ExplanationEngine()
-    repo_explanation = explanation_engine.explain_repository(arch_model, repo_builder)
-    arch_explanation = explanation_engine.explain_architecture(arch_model)
-    mod_explanations = {
-        m: explanation_engine.explain_module(m, arch_model, repo_builder)
-        for m in arch_model.modules
-    }
-
     # 9. Precomputed Markdown Documentation
     doc_markdown = generate_architecture_markdown(arch_model)
 
@@ -204,12 +188,6 @@ def build_unified_payload(
         "entrypoints": arch_model.entry_points,
         "flows": [f.to_dict() for f in arch_model.flows],
         "documentation_md": doc_markdown,
-        "onboarding": onboarding_plan.to_dict(),
-        "deepwiki": {
-            "repository": repo_explanation,
-            "architecture": arch_explanation,
-            "modules": mod_explanations,
-        },
     }
 
 
@@ -1045,7 +1023,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .syntax-str { color: #10b981; }
     .syntax-cmt { color: #64748b; font-style: italic; }
 
-    /* DEEPWIKI DOCS TAB */
+    
     #tab-docs {
       padding: 24px 36px;
     }
@@ -1178,10 +1156,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <span class="icon">◉</span>
         <span>Overview</span>
       </div>
-      <div class="nav-item" data-tab="onboard">
-        <span class="icon">🎓</span>
-        <span>Teach Me</span>
-      </div>
       <div class="nav-item" data-tab="architecture">
         <span class="icon">🏛️</span>
         <span>Architecture</span>
@@ -1194,14 +1168,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <span class="icon">📁</span>
         <span>Code Explorer</span>
       </div>
-      <div class="nav-item" data-tab="docs">
-        <span class="icon">📖</span>
-        <span>DeepWiki Docs</span>
-      </div>
 
       <div class="sidebar-footer">
         <span>Deterministic Intelligence</span>
-        <span style="opacity: 0.6;">Karuvi v0.2.0 • DeepWiki-Pro-Max</span>
+        <span style="opacity: 0.6;">Karuvi v0.2.0</span>
       </div>
     </nav>
 
@@ -1225,7 +1195,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <p id="entry-mod-desc">This module sits structurally high and can reach major portions of the repository.</p>
           </div>
           <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" id="btn-start-onboarding">Start Onboarding Course ➔</button>
             <button class="btn-secondary" id="btn-jump-code">View Code</button>
           </div>
         </div>
@@ -1236,23 +1205,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- Key Architectural Insights -->
         <div class="section-title">🌉 Structural Bridges & Central Modules</div>
         <div id="bridges-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 30px;"></div>
-      </div>
-
-      <!-- VIEW 2: TEACH ME / ONBOARDING -->
-      <div class="tab-view" id="tab-onboard">
-        <div class="onboard-layout">
-          <div class="onboard-sidebar">
-            <div class="onboard-sidebar-header">
-              <h2>Course Roadmap</h2>
-              <span class="pill-tag" id="onboard-total-steps-badge">0 steps</span>
-            </div>
-            <div class="onboard-sidebar-list" id="onboard-steps-list"></div>
-          </div>
-
-          <div class="onboard-main" id="onboard-detail-card">
-            <div style="color: var(--text-muted); font-size: 14px;">Select an onboarding step on the left to begin learning.</div>
-          </div>
-        </div>
       </div>
 
       <!-- VIEW 3: ARCHITECTURE -->
@@ -1269,25 +1221,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div class="graph-layout">
           <div class="graph-canvas-container">
             <div class="graph-floating-controls">
-              <div class="pill-group" id="graph-level-pills">
-                <div class="pill-opt active" data-level="architecture">Architecture</div>
-                <div class="pill-opt" data-level="modules">Modules (All)</div>
-                <div class="pill-opt" data-level="symbols">Symbols (Deep)</div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="graph-text-filter" placeholder="Filter nodes (regex)..." style="background: var(--bg-surface); border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; width: 160px;">
+                <div style="display: flex; gap: 4px; align-items: center; margin-left: 8px;" id="graph-role-filters">
+                  <span class="pill-opt active" data-role="ALL">All</span>
+                  <span class="pill-opt" data-role="ENTRY_CANDIDATE">Entry</span>
+                  <span class="pill-opt" data-role="CYCLE">Cycle</span>
+                  <span class="pill-opt" data-role="HUB">Hub</span>
+                  <span class="pill-opt" data-role="BRIDGE">Bridge</span>
+                  <span class="pill-opt" data-role="LEAF">Leaf</span>
+                </div>
               </div>
               <div class="filter-checkboxes">
                 <label><input type="checkbox" id="chk-filter-calls" checked> Calls</label>
                 <label><input type="checkbox" id="chk-filter-imports" checked> Imports</label>
                 <label><input type="checkbox" id="chk-filter-refs" checked> References</label>
               </div>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" id="btn-fold-all">Fold All</button>
             </div>
             <div id="network-canvas"></div>
           </div>
-          <div class="graph-inspector" id="graph-inspector">
-            <div class="inspector-title" id="insp-title">Select a Node</div>
-            <div class="inspector-sub" id="insp-sub">Click any component or module in the canvas to inspect evidence. Unrelated nodes will dim automatically.</div>
-            <div id="insp-body"></div>
-          </div>
+
         </div>
       </div>
 
@@ -1307,20 +1260,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- VIEW 6: DEEPWIKI DOCS -->
-      <div class="tab-view" id="tab-docs">
-        <div class="docs-container">
-          <div class="docs-nav-tabs">
-            <button class="docs-tab-btn active" data-doclevel="repo">1. Repository Overview</button>
-            <button class="docs-tab-btn" data-doclevel="arch">2. Architecture Subsystems</button>
-            <button class="docs-tab-btn" data-doclevel="modules">3. Module Encyclopedia</button>
-            <button class="docs-tab-btn" data-doclevel="rel">5. Relationship Inspector</button>
-          </div>
-          <div id="docs-level-content"></div>
-        </div>
-      </div>
-
-    </main>
+</main>
   </div>
 
   <!-- Global Search Modal (Cmd+K) -->
@@ -1369,7 +1309,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         item.addEventListener('click', () => switchTab(item.dataset.tab));
       });
 
-      document.getElementById('btn-start-onboarding').addEventListener('click', () => switchTab('onboard'));
       document.getElementById('btn-jump-code').addEventListener('click', () => switchTab('code'));
 
       // -------------------------------------------------------------
@@ -1398,6 +1337,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const ev = topEp.evidence || {};
         document.getElementById('entry-mod-desc').textContent = 
           `Scores highest in downstream reach with 0 cyclic blocks. Directly reaches ${ev.reachable_modules || 0} modules across ${ev.reachable_components || 0} architectural components.`;
+      } else {
+        document.getElementById('entry-point-banner').style.display = 'none';
       }
 
       // Cycle Radar
@@ -1438,154 +1379,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       } else {
         bridgesContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No critical bridge bottlenecks detected.</div>';
       }
-
-      // -------------------------------------------------------------
-      // 2. Onboarding Course ("Teach Me This Codebase")
-      // -------------------------------------------------------------
-      const onboardingData = data.onboarding || { steps: [] };
-      const stepsListEl = document.getElementById('onboard-steps-list');
-      const onboardBadgeEl = document.getElementById('onboard-total-steps-badge');
-      const onboardDetailEl = document.getElementById('onboard-detail-card');
-      
-      let currentStepIndex = 0;
-      let currentComplexity = 'beginner'; // 'beginner' | 'intermediate' | 'advanced'
-
-      onboardBadgeEl.textContent = `${onboardingData.steps.length} steps (${onboardingData.estimated_read_time_minutes || 10}m)`;
-
-      function renderOnboardingSidebar() {
-        stepsListEl.innerHTML = (onboardingData.steps || []).map((step, idx) => {
-          const isAct = idx === currentStepIndex;
-          return `
-            <div class="step-item-card ${isAct ? 'active' : ''}" onclick="window.selectOnboardingStep(${idx})">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="step-num-badge">STEP ${step.step_number}</span>
-                ${step.is_cycle_group ? '<span class="role-badge" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-rose);">🔄 Cycle</span>' : ''}
-              </div>
-              <div class="step-title-text">${step.concept || step.title}</div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      function renderOnboardingDetail() {
-        const step = onboardingData.steps[currentStepIndex];
-        if (!step) return;
-
-        let activeSummary = step.beginner_summary;
-        if (currentComplexity === 'intermediate') activeSummary = step.intermediate_summary;
-        if (currentComplexity === 'advanced') activeSummary = step.advanced_summary;
-
-        const cycleAlertHtml = step.is_cycle_group ? `
-          <div class="alert-card warning">
-            <strong>⚠️ Interdependent State Loop</strong>: These modules (${step.cycle_modules.join(', ')}) form a circular dependency loop. We study them together to avoid chicken-and-egg confusion.
-          </div>
-        ` : '';
-
-        const prereqsHtml = (step.prerequisites_covered || []).length > 0
-          ? step.prerequisites_covered.map(p => `<span class="pill-tag" style="color: var(--accent-green);">✓ ${p}</span>`).join(' ')
-          : '<span style="color: var(--text-muted); font-size: 12px;">None (Ground level)</span>';
-
-        const unlocksHtml = (step.next_unlocks || []).length > 0
-          ? step.next_unlocks.map(u => `<span class="pill-tag" style="color: var(--accent-blue);">➔ ${u}</span>`).join(' ')
-          : '<span style="color: var(--text-muted); font-size: 12px;">Final step</span>';
-
-        const modulesHtml = (step.target_modules || []).map(m => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-canvas); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;">
-            <span style="font-family: 'Fira Code', monospace; font-size: 12px;">📄 ${m}</span>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="window.selectModule('${m}')">Explore Code ➔</button>
-              <button class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="window.jumpToGraphNode('${m}')">Graph ➔</button>
-            </div>
-          </div>
-        `).join('');
-
-        const symbolsHtml = (step.key_symbols || []).map(s => `
-          <span class="pill-tag" style="font-size: 11px;">
-            ${s.type === 'class' ? '🏷️' : '⚡'} <strong>${s.name}</strong> <span style="opacity: 0.6;">(${s.module})</span>
-          </span>
-        `).join(' ');
-
-        onboardDetailEl.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-            <div>
-              <div style="font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent-blue); font-weight: 700; text-transform: uppercase;">
-                Step ${step.step_number} of ${onboardingData.steps.length} • ${step.component_name || 'Foundation'}
-              </div>
-              <h1 style="font-size: 22px; font-weight: 800; margin-top: 4px;">${step.title}</h1>
-            </div>
-            <div class="complexity-selector">
-              <button class="complexity-btn ${currentComplexity === 'beginner' ? 'active' : ''}" onclick="window.setComplexity('beginner')">Beginner</button>
-              <button class="complexity-btn ${currentComplexity === 'intermediate' ? 'active' : ''}" onclick="window.setComplexity('intermediate')">Intermediate</button>
-              <button class="complexity-btn ${currentComplexity === 'advanced' ? 'active' : ''}" onclick="window.setComplexity('advanced')">Advanced</button>
-            </div>
-          </div>
-
-          ${cycleAlertHtml}
-
-          <div style="background: var(--bg-card); border-left: 3px solid var(--accent-blue); padding: 16px 20px; border-radius: 6px; font-size: 14px; line-height: 1.7;">
-            ${activeSummary}
-          </div>
-
-          <div>
-            <div class="section-title">Why Now?</div>
-            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">${step.why_now}</div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-green); margin-bottom: 8px;">Prerequisites Covered</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 6px;">${prereqsHtml}</div>
-            </div>
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-blue); margin-bottom: 8px;">Next Unlocks</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 6px;">${unlocksHtml}</div>
-            </div>
-          </div>
-
-          <div>
-            <div class="section-title">Target Modules for this Step</div>
-            <div>${modulesHtml}</div>
-          </div>
-
-          ${symbolsHtml ? `
-            <div>
-              <div class="section-title">Key Core Symbols to Learn</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">${symbolsHtml}</div>
-            </div>
-          ` : ''}
-
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
-            <button class="btn-secondary" ${currentStepIndex === 0 ? 'disabled style="opacity: 0.4;"' : ''} onclick="window.prevOnboardingStep()">
-              ← Previous Step
-            </button>
-            <button class="btn-primary" ${currentStepIndex >= onboardingData.steps.length - 1 ? 'disabled style="opacity: 0.4;"' : ''} onclick="window.nextOnboardingStep()">
-              Next Step ➔
-            </button>
-          </div>
-        `;
-      }
-
-      window.selectOnboardingStep = function(idx) {
-        currentStepIndex = idx;
-        renderOnboardingSidebar();
-        renderOnboardingDetail();
-      };
-
-      window.setComplexity = function(comp) {
-        currentComplexity = comp;
-        renderOnboardingDetail();
-      };
-
-      window.prevOnboardingStep = function() {
-        if (currentStepIndex > 0) window.selectOnboardingStep(currentStepIndex - 1);
-      };
-
-      window.nextOnboardingStep = function() {
-        if (currentStepIndex < onboardingData.steps.length - 1) window.selectOnboardingStep(currentStepIndex + 1);
-      };
-
-      renderOnboardingSidebar();
-      renderOnboardingDetail();
 
       // -------------------------------------------------------------
       // 3. Architecture Tab
@@ -1633,19 +1426,61 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       // 4. Code Explorer Tab (Sourcetrail Side-by-Side)
       // -------------------------------------------------------------
       const fileTreePane = document.getElementById('code-file-tree');
-      fileTreePane.innerHTML = (data.modules || []).map(m => {
-        let roleBadgeColor = 'var(--text-muted)';
-        if (m.role === 'ENTRY_CANDIDATE') roleBadgeColor = 'var(--role-entry)';
-        else if (m.role === 'HUB') roleBadgeColor = 'var(--role-hub)';
-        else if (m.role === 'BRIDGE') roleBadgeColor = 'var(--role-bridge)';
-        else if (m.role === 'LEAF') roleBadgeColor = 'var(--role-leaf)';
-        return `
-          <div class="file-tree-item" id="tree-item-${m.id.replace(/[^a-zA-Z0-9]/g, '_')}" onclick="window.selectModule('${m.id}')">
-            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${m.path}</span>
-            <span class="role-badge" style="color: ${roleBadgeColor}; border: 1px solid rgba(255,255,255,0.1);">${m.role}</span>
-          </div>
+      fileTreePane.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 20px; text-align: center;">Select a module to view its dependency tree.</div>';
+
+      function renderDependencyTree(mod) {
+        if (!mod) return;
+        
+        let html = `<div style="font-size: 13px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); word-break: break-all;">🌳 Dependency Tree<br><span style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace; font-weight: normal;">${mod.id}</span></div>`;
+        
+        // Upstream dependencies (Outgoing modules)
+        html += `
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-amber); text-transform: uppercase; padding: 4px 6px; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
+              <span style="font-size: 8px;">▼</span> ⬆️ UPSTREAM DEPENDENCIES (${(mod.outgoing_modules || []).length})
+            </div>
+            <div style="padding-left: 10px;">
         `;
-      }).join('');
+        if (mod.outgoing_modules && mod.outgoing_modules.length > 0) {
+            mod.outgoing_modules.forEach(depId => {
+              const depMod = (data.modules || []).find(m => m.id === depId);
+              const depName = depMod ? depMod.path : depId;
+              html += `
+                <div class="file-tree-item" onclick="window.selectModule('${depId}')">
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span>
+                </div>
+              `;
+            });
+        } else {
+            html += `<div style="padding: 4px 10px; font-size: 11px; color: var(--text-muted);">None (No imports)</div>`;
+        }
+        html += `</div></div>`;
+        
+        // Downstream dependents (Incoming modules)
+        html += `
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; padding: 4px 6px; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
+              <span style="font-size: 8px;">▼</span> ⬇️ DOWNSTREAM DEPENDENTS (${(mod.incoming_modules || []).length})
+            </div>
+            <div style="padding-left: 10px;">
+        `;
+        if (mod.incoming_modules && mod.incoming_modules.length > 0) {
+            mod.incoming_modules.forEach(depId => {
+              const depMod = (data.modules || []).find(m => m.id === depId);
+              const depName = depMod ? depMod.path : depId;
+              html += `
+                <div class="file-tree-item" onclick="window.selectModule('${depId}')">
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span>
+                </div>
+              `;
+            });
+        } else {
+            html += `<div style="padding: 4px 10px; font-size: 11px; color: var(--text-muted);">None (No dependents)</div>`;
+        }
+        html += `</div></div>`;
+        
+        fileTreePane.innerHTML = html;
+      }
 
       function highlightPythonSyntax(rawText) {
         if (!rawText) return '<em>(Source code empty or file not on disk)</em>';
@@ -1665,7 +1500,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
           return `
             <tr>
-              <td class="code-line-num">${idx + 1}</td>
               <td class="code-line-text">${escaped}</td>
             </tr>
           `;
@@ -1677,10 +1511,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const mod = (data.modules || []).find(m => m.id === modId);
         if (!mod) return;
 
-        // Tree active highlight
-        document.querySelectorAll('.file-tree-item').forEach(el => el.classList.remove('active'));
-        const activeTreeEl = document.getElementById(`tree-item-${modId.replace(/[^a-zA-Z0-9]/g, '_')}`);
-        if (activeTreeEl) activeTreeEl.classList.add('active');
+        // Render dependency tree
+        renderDependencyTree(mod);
 
         document.getElementById('code-file-path').textContent = `${mod.path} (${mod.line_count} LOC • ${mod.role})`;
         document.getElementById('code-header-actions').innerHTML = `
@@ -1713,7 +1545,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       // 5. Graph Explorer with Unrelated Node Greying
       // -------------------------------------------------------------
       let network = null;
-      let currentLevel = 'architecture';
+      let currentLevel = 'modules';
       let unfoldedComponents = new Set();
       let selectedNodeId = null;
 
@@ -1906,34 +1738,83 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           network.on('click', function(params) {
             if (params.nodes.length > 0) {
               const clickedId = params.nodes[0];
-              selectedNodeId = clickedId;
-              applyUnrelatedNodeGreying(clickedId);
-              onCanvasNodeSelected(clickedId);
+              if (clickedId.startsWith('mod:')) {
+                  const mId = clickedId.replace('mod:', '');
+                  window.selectModule(mId);
+              }
             } else {
               selectedNodeId = null;
-              resetNodeOpacities();
+              applyTextFilter();
             }
           });
 
-          network.on('doubleClick', function(params) {
-            if (params.nodes.length > 0) {
-              const nodeId = params.nodes[0];
-              if (nodeId.startsWith('comp:')) {
-                const compId = nodeId.replace('comp:', '');
-                if (unfoldedComponents.has(compId)) {
-                  unfoldedComponents.delete(compId);
-                } else {
-                  unfoldedComponents.add(compId);
-                }
-                updateNetworkData();
-              }
-            }
-          });
         } else {
           network.fit({ animation: { duration: 400 } });
         }
       }
 
+
+      let currentRoleFilter = 'ALL';
+      const cyclesSet = new Set();
+      (data.cycles || []).forEach(cycle => cycle.forEach(m => cyclesSet.add(m)));
+
+      document.querySelectorAll('#graph-role-filters .pill-opt').forEach(pill => {
+        pill.addEventListener('click', () => {
+          document.querySelectorAll('#graph-role-filters .pill-opt').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          currentRoleFilter = pill.dataset.role;
+          applyTextFilter();
+        });
+      });
+
+      document.getElementById('graph-text-filter').addEventListener('input', applyTextFilter);
+
+      function applyTextFilter() {
+        if (!network) return;
+        const query = document.getElementById('graph-text-filter').value.trim();
+        
+        let regex = null;
+        if (query) {
+          try {
+            regex = new RegExp(query, 'i');
+          } catch (e) {
+            // invalid regex, fallback to string includes
+          }
+        }
+
+        const allNodes = network.body.data.nodes.get();
+        const updates = allNodes.map(n => {
+          let matchesQuery = true;
+          let matchesRole = true;
+
+          if (query && n.label) {
+             if (regex) {
+               matchesQuery = regex.test(n.label);
+             } else {
+               matchesQuery = n.label.toLowerCase().includes(query.toLowerCase());
+             }
+          } else if (query && !n.label) {
+             matchesQuery = false;
+          }
+
+          if (currentRoleFilter !== 'ALL' && n.id.startsWith('mod:')) {
+            const mId = n.id.replace('mod:', '');
+            const mod = (data.modules || []).find(m => m.id === mId);
+            if (currentRoleFilter === 'CYCLE') {
+              if (!cyclesSet.has(mId)) matchesRole = false;
+            } else if (mod && mod.role !== currentRoleFilter) {
+              matchesRole = false;
+            }
+          }
+
+          if (matchesQuery && matchesRole) {
+            return { id: n.id, opacity: 1.0 };
+          } else {
+            return { id: n.id, opacity: 0.12 };
+          }
+        });
+        network.body.data.nodes.update(updates);
+      }
       function applyUnrelatedNodeGreying(focusNodeId) {
         if (!network) return;
         const connectedNodes = new Set(network.getConnectedNodes(focusNodeId));
@@ -1961,55 +1842,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (network) {
           const graphData = buildGraphDataSet(currentLevel);
           network.setData(graphData);
-          if (selectedNodeId) applyUnrelatedNodeGreying(selectedNodeId);
-        }
-      }
-
-      function onCanvasNodeSelected(nodeId) {
-        const inspTitle = document.getElementById('insp-title');
-        const inspSub = document.getElementById('insp-sub');
-        const inspBody = document.getElementById('insp-body');
-
-        if (nodeId.startsWith('comp:')) {
-          const cId = nodeId.replace('comp:', '');
-          const comp = (data.components || []).find(c => c.id === cId);
-          if (!comp) return;
-
-          inspTitle.textContent = `📦 ${comp.name}`;
-          inspSub.textContent = `Architectural Component • ${comp.modules.length} member modules`;
-          const isUnfolded = unfoldedComponents.has(cId);
-
-          inspBody.innerHTML = `
-            <div class="inspector-prop"><span class="lbl">Confidence</span><span class="val">${Math.round(comp.confidence * 100)}%</span></div>
-            <div class="inspector-prop"><span class="lbl">Discovery</span><span class="val">${(comp.discovery_methods || []).join(', ')}</span></div>
-            <div style="margin-top: 16px;">
-              <button class="btn-primary" style="width: 100%; justify-content: center; margin-bottom: 8px;" onclick="window.toggleUnfold('${cId}')">
-                ${isUnfolded ? 'Fold Component' : 'Unfold into Modules ➔'}
-              </button>
-            </div>
-            <div style="margin-top: 14px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Member Modules:</div>
-            <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8; color: var(--text-secondary); margin-top: 6px;">
-              ${comp.modules.map(m => `<div>• ${m}</div>`).join('')}
-            </div>
-          `;
-        } else if (nodeId.startsWith('mod:')) {
-          const mId = nodeId.replace('mod:', '');
-          const mod = (data.modules || []).find(m => m.id === mId);
-          if (!mod) return;
-
-          inspTitle.textContent = `📄 ${mod.name}`;
-          inspSub.textContent = mod.path;
-          inspBody.innerHTML = `
-            <div class="inspector-prop"><span class="lbl">Component</span><span class="val">${mod.component_name}</span></div>
-            <div class="inspector-prop"><span class="lbl">Role</span><span class="val">${mod.role}</span></div>
-            <div class="inspector-prop"><span class="lbl">LOC</span><span class="val">${mod.line_count}</span></div>
-            <div class="inspector-prop"><span class="lbl">In / Out Degree</span><span class="val">${mod.in_degree} / ${mod.out_degree}</span></div>
-            <div class="inspector-prop"><span class="lbl">Betweenness</span><span class="val">${mod.betweenness}</span></div>
-            <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-              <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="window.selectModule('${mId}')">Explore Source Code ➔</button>
-              <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="window.inspectDeepWikiModule('${mId}')">DeepWiki Explanation ➔</button>
-            </div>
-          `;
+          applyTextFilter();
         }
       }
 
@@ -2033,186 +1866,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       window.jumpToGraphNode = function(modId) {
         switchTab('graph');
         currentLevel = 'modules';
-        document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.toggle('active', p.dataset.level === 'modules'));
         updateNetworkData();
         setTimeout(() => {
           if (network) {
             network.focus(`mod:${modId}`, { scale: 1.2, animation: { duration: 500 } });
             network.selectNodes([`mod:${modId}`]);
             applyUnrelatedNodeGreying(`mod:${modId}`);
-            onCanvasNodeSelected(`mod:${modId}`);
           }
         }, 200);
       };
 
-      document.getElementById('btn-fold-all').addEventListener('click', () => {
-        unfoldedComponents.clear();
-        updateNetworkData();
-      });
-
-      document.querySelectorAll('#graph-level-pills .pill-opt').forEach(pill => {
-        pill.addEventListener('click', function() {
-          document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.remove('active'));
-          this.classList.add('active');
-          currentLevel = this.dataset.level;
-          updateNetworkData();
-        });
-      });
-
       ['chk-filter-calls', 'chk-filter-imports', 'chk-filter-refs'].forEach(id => {
         document.getElementById(id).addEventListener('change', updateNetworkData);
       });
-
-      // -------------------------------------------------------------
-      // 6. DeepWiki Docs Tab (Levels 1 to 5)
-      // -------------------------------------------------------------
-      const deepWiki = data.deepwiki || {};
-      const docsContainer = document.getElementById('docs-level-content');
-      let currentDocLevel = 'repo'; // 'repo' | 'arch' | 'modules' | 'rel'
-
-      function renderMarkdown(md) {
-        if (!md) return '';
-        return md
-          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-          .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')
-          .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')
-          .replace(/`([^`]+)`/gim, '<code>$1</code>')
-          .replace(/^\\- (.*$)/gim, '<ul><li>$1</li></ul>')
-          .replace(/<\\/ul>\\s*<ul>/gim, '')
-          .replace(/\\n\\n/gim, '<br>');
-      }
-
-      function renderDeepWikiView() {
-        if (currentDocLevel === 'repo') {
-          docsContainer.innerHTML = renderMarkdown(deepWiki.repository || data.documentation_md);
-        } else if (currentDocLevel === 'arch') {
-          docsContainer.innerHTML = renderMarkdown(deepWiki.architecture || '# Architecture Subsystems');
-        } else if (currentDocLevel === 'modules') {
-          const modDocs = deepWiki.modules || {};
-          const modOptions = Object.keys(modDocs).map(m => `<option value="${m}">${m}</option>`).join('');
-          docsContainer.innerHTML = `
-            <h2>3. Module Encyclopedia</h2>
-            <p>Select any module to inspect its architectural purpose, inbound dependents, and exported contracts:</p>
-            <select id="deepwiki-mod-select" style="background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; font-family: 'Fira Code', monospace; width: 100%; margin-bottom: 20px;">
-              ${modOptions}
-            </select>
-            <div id="deepwiki-mod-content"></div>
-          `;
-          const selectEl = document.getElementById('deepwiki-mod-select');
-          selectEl.addEventListener('change', (e) => renderModuleDoc(e.target.value));
-          if (Object.keys(modDocs).length > 0) renderModuleDoc(Object.keys(modDocs)[0]);
-        } else if (currentDocLevel === 'rel') {
-          const mods = (data.modules || []).map(m => m.id);
-          docsContainer.innerHTML = `
-            <h2>5. Relationship Inspector ("Why does A depend on B?")</h2>
-            <p>Inspect why any module depends on another, what symbols are imported, and what architectural contract is fulfilled:</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-              <div>
-                <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">SOURCE MODULE</label>
-                <select id="rel-src-select" style="width: 100%; background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px; border-radius: 6px; font-family: 'Fira Code', monospace; margin-top: 4px;">
-                  ${mods.map(m => `<option value="${m}">${m}</option>`).join('')}
-                </select>
-              </div>
-              <div>
-                <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TARGET MODULE</label>
-                <select id="rel-tgt-select" style="width: 100%; background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px; border-radius: 6px; font-family: 'Fira Code', monospace; margin-top: 4px;">
-                  ${mods.map(m => `<option value="${m}">${m}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-            <div id="rel-explanation-output" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px;"></div>
-          `;
-          document.getElementById('rel-src-select').addEventListener('change', updateRelExplanation);
-          document.getElementById('rel-tgt-select').addEventListener('change', updateRelExplanation);
-          updateRelExplanation();
-        }
-      }
-
-      function renderModuleDoc(modId) {
-        const modDoc = (deepWiki.modules || {})[modId];
-        const out = document.getElementById('deepwiki-mod-content');
-        if (!modDoc || !out) return;
-        out.innerHTML = `
-          <div class="stat-card" style="margin-bottom: 20px;">
-            <h3 style="font-family: 'Fira Code', monospace; color: var(--accent-blue);">${modDoc.path}</h3>
-            <div style="margin-top: 6px; font-size: 14px;">${modDoc.purpose}</div>
-            <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">${modDoc.role_description}</div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-blue); margin-bottom: 6px;">Incoming Dependents (${(modDoc.incoming_dependents || []).length})</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8;">
-                ${(modDoc.incoming_dependents || []).map(m => `<div>← ${m}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
-              </div>
-            </div>
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-green); margin-bottom: 6px;">Outgoing Dependencies (${(modDoc.outgoing_dependencies || []).length})</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8;">
-                ${(modDoc.outgoing_dependencies || []).map(m => `<div>→ ${m}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      function updateRelExplanation() {
-        const src = document.getElementById('rel-src-select').value;
-        const tgt = document.getElementById('rel-tgt-select').value;
-        const out = document.getElementById('rel-explanation-output');
-        if (!out) return;
-
-        // Check if edge exists
-        const edge = (data.module_edges || []).find(e => e.source === src && e.target === tgt);
-        if (edge) {
-          out.innerHTML = `
-            <div style="font-size: 14px; font-weight: 700; color: var(--accent-green); margin-bottom: 8px;">
-              ✔ Verified Direct Architectural Dependency
-            </div>
-            <div style="font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
-              <code>${src}</code> imports and depends on <code>${tgt}</code> (weight: ${edge.weight}).
-            </div>
-            ${edge.symbol_edges && edge.symbol_edges.length > 0 ? `
-              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">Imported & Called Symbols:</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px;">
-                ${edge.symbol_edges.map(s => `<div>• ${s.source_symbol || s.symbol || s} ➔ ${s.target_symbol || s.symbol || s}</div>`).join('')}
-              </div>
-            ` : ''}
-          `;
-        } else {
-          out.innerHTML = `
-            <div style="font-size: 13px; color: var(--text-muted);">
-              No direct dependency edge from <code>${src}</code> to <code>${tgt}</code> detected.
-            </div>
-          `;
-        }
-      }
-
-      window.inspectDeepWikiModule = function(modId) {
-        switchTab('docs');
-        currentDocLevel = 'modules';
-        document.querySelectorAll('.docs-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.doclevel === 'modules'));
-        renderDeepWikiView();
-        setTimeout(() => {
-          const sel = document.getElementById('deepwiki-mod-select');
-          if (sel) {
-            sel.value = modId;
-            renderModuleDoc(modId);
-          }
-        }, 50);
-      };
-
-      document.querySelectorAll('.docs-tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.docs-tab-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          currentDocLevel = this.dataset.doclevel;
-          renderDeepWikiView();
-        });
-      });
-
-      renderDeepWikiView();
 
       // -------------------------------------------------------------
       // 7. Global Search Modal (Cmd+K)
