@@ -2941,12 +2941,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       window.addEventListener('keydown', function(e) {
         if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
           e.preventDefault();
+          e.stopPropagation();
           if (searchOverlay.classList.contains('active')) closeSearch();
           else openSearch();
         } else if (e.key === 'Escape' && searchOverlay.classList.contains('active')) {
           closeSearch();
         }
-      });
+      }, true);
 
       searchInput.addEventListener('input', function() {
         renderSearchResults(this.value.trim().toLowerCase());
