@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
@@ -127,6 +128,10 @@ def display_commands_table():
 
     commands = [
         ("karuvi <repo>", "Scan repository, build graph, and display dashboard", "uv run karuvi /path/to/repo"),
+        ("onboard, --onboard", "Progressive reading roadmap with complexity tiers", "uv run karuvi <repo> onboard --level beginner"),
+        ("explain, --explain", "Multi-level DeepWiki progressive technical explanation", "uv run karuvi <repo> explain [repo|arch|<file>]"),
+        ("--why <src> <tgt>", "Explain why source module depends on target module", "uv run karuvi <repo> --why src/api.py src/auth.py"),
+        ("explore, --explore", "Generate and open Living Codebase Atlas in browser", "uv run karuvi <repo> explore"),
         ("--tree, -t <file>", "Print aesthetic ASCII intra-file AST & code flow tree", "uv run karuvi <repo> -t src/app.py"),
         ("--deps <file>", "Print upstream imports & downstream dependents tree", "uv run karuvi <repo> --deps src/app.py"),
         ("--chart <file>", "Print indentation-based control flow chart for a file", "uv run karuvi <repo> --chart src/app.py"),
@@ -460,6 +465,8 @@ def interactive_menu(
                 "[bold cyan][6][/bold cyan] 📊 Full Repository Dashboard\n"
                 "[bold cyan][7][/bold cyan] 🌐 Export Living Atlas HTML    "
                 "[bold cyan][8][/bold cyan] 💾 Export JSON Report\n"
+                "[bold cyan][9][/bold cyan] 🎓 Onboarding Reading Order    "
+                "[bold cyan][10][/bold cyan] 📖 DeepWiki Technical Guide\n"
                 "[bold cyan][?] [/bold cyan] 🛠️  Show Commands Reference    "
                 "[bold red][q][/bold red] Exit",
                 title="[bold]Karuvi Interactive Menu[/bold]",
@@ -467,7 +474,7 @@ def interactive_menu(
             )
         )
         try:
-            choice = input("Select an action [1-8, ?, q]: ").strip()
+            choice = input("Select an action [1-10, ?, q]: ").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[yellow]Exiting interactive mode.[/yellow]")
             break
@@ -524,6 +531,16 @@ def interactive_menu(
         elif choice == "8":
             json_out = repo_path / "karuvi_analysis.json"
             export_full_json(repo_path, parsed_modules, builder, json_out)
+        elif choice == "9":
+            from architecture.analyzer import ArchitectureAnalyzer
+            from architecture.onboarding import CodebaseOnboardingEngine
+            arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
+            plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
+            render_onboarding_course(plan, level="beginner")
+        elif choice == "10":
+            from architecture.analyzer import ArchitectureAnalyzer
+            arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
+            render_deepwiki_explanation("repo", arch_model, builder, level="beginner")
         console.print()
 
 
@@ -654,8 +671,165 @@ def export_html_graph(builder: RepoGraphBuilder, output_path: Path, arch_model: 
     console.print(f"[bold green]✔ Saved Living Codebase Atlas interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
 
 
+def render_onboarding_course(plan: Any, level: str = "beginner"):
+    """Renders the step-by-step onboarding plan in rich terminal output."""
+    console.print(
+        Panel(
+            f"[bold]Estimated Read Time:[/bold] [yellow]{plan.estimated_read_time_minutes} minutes[/yellow]  •  "
+            f"[bold]Total Steps:[/bold] [cyan]{plan.total_steps}[/cyan]  •  "
+            f"[bold]Complexity Level:[/bold] [magenta]{level.capitalize()}[/magenta]",
+            title="[bold cyan]🎓 Karuvi Progressive Codebase Onboarding Course[/bold cyan]",
+            border_style="cyan",
+        )
+    )
+
+    for step in plan.steps:
+        summary = step.beginner_summary
+        if level == "intermediate":
+            summary = step.intermediate_summary
+        elif level == "advanced":
+            summary = step.advanced_summary
+
+        step_table = Table.grid(padding=(0, 2))
+        step_table.add_column(style="bold cyan", width=18)
+        step_table.add_column(style="white")
+
+        step_table.add_row("Summary:", summary)
+        step_table.add_row("Why Now:", f"[dim]{step.why_now}[/dim]")
+        step_table.add_row("Target Modules:", ", ".join(f"[cyan]{m}[/cyan]" for m in step.target_modules))
+
+        if step.prerequisites_covered:
+            step_table.add_row("Prerequisites:", ", ".join(f"[green]✓ {p}[/green]" for p in step.prerequisites_covered[:5]))
+
+        if step.next_unlocks:
+            step_table.add_row("Next Unlocks:", ", ".join(f"[blue]➔ {u}[/blue]" for u in step.next_unlocks[:5]))
+
+        if step.key_symbols:
+            sym_strs = [f"{s['name']} ({s['type']})" for s in step.key_symbols[:6]]
+            step_table.add_row("Key Symbols:", ", ".join(f"[yellow]{s}[/yellow]" for s in sym_strs))
+
+        cycle_prefix = "[bold red]🔄 (Circular Loop) [/bold red]" if step.is_cycle_group else ""
+        panel_title = f"{cycle_prefix}Step {step.step_number}/{plan.total_steps}: {step.title}"
+        border_style = "red" if step.is_cycle_group else "blue"
+
+        console.print(Panel(step_table, title=panel_title, border_style=border_style))
+        console.print()
+
+
+def render_deepwiki_explanation(
+    topic: str,
+    arch_model: Any,
+    repo_builder: Any,
+    level: str = "beginner",
+):
+    """Renders multi-level DeepWiki progressive technical explanations."""
+    from architecture.explanation import ExplanationEngine
+
+    engine = ExplanationEngine()
+    topic_clean = topic.strip().lower()
+
+    if topic_clean in ("repo", "overview", "all", "."):
+        doc = engine.explain_repository(arch_model, repo_builder)
+        console.print(Panel(Markdown(doc), title="[bold cyan]📖 DeepWiki — Repository Technical Guide[/bold cyan]", border_style="cyan"))
+    elif topic_clean in ("arch", "architecture", "subsystems"):
+        doc = engine.explain_architecture(arch_model)
+        console.print(Panel(Markdown(doc), title="[bold cyan]🏛️ DeepWiki — Architectural Subsystems & Flow[/bold cyan]", border_style="magenta"))
+    else:
+        # Match against module paths or names
+        matched_mod = None
+        for m_id in arch_model.modules:
+            if topic == m_id or topic in m_id or Path(m_id).name == topic or Path(m_id).stem == topic:
+                matched_mod = m_id
+                break
+
+        if matched_mod:
+            mod_doc = engine.explain_module(matched_mod, arch_model, repo_builder)
+            mod_table = Table.grid(padding=(0, 2))
+            mod_table.add_column(style="bold cyan", width=18)
+            mod_table.add_column(style="white")
+
+            mod_table.add_row("File Path:", f"[bold white]{mod_doc['path']}[/bold white]")
+            mod_table.add_row("Role:", f"[yellow]{mod_doc['role']}[/yellow] — {mod_doc['role_description']}")
+            mod_table.add_row("Primary Purpose:", mod_doc['purpose'])
+
+            in_deps = ", ".join(f"[green]{d}[/green]" for d in mod_doc['incoming_dependents']) if mod_doc['incoming_dependents'] else "[dim]None (Root / Unused)[/dim]"
+            out_deps = ", ".join(f"[blue]{d}[/blue]" for d in mod_doc['outgoing_dependencies']) if mod_doc['outgoing_dependencies'] else "[dim]None (Leaf)[/dim]"
+            mod_table.add_row("Imported By:", in_deps)
+            mod_table.add_row("Depends On:", out_deps)
+
+            if mod_doc.get("invariants"):
+                mod_table.add_row("Invariants:", " • ".join(mod_doc["invariants"]))
+            if mod_doc.get("failure_modes"):
+                mod_table.add_row("Failure Modes:", " • ".join(mod_doc["failure_modes"]))
+
+            console.print(Panel(mod_table, title=f"[bold cyan]🔍 DeepWiki Module Explanation: {matched_mod}[/bold cyan]", border_style="cyan"))
+        else:
+            console.print(f"[bold red]Error:[/bold red] Module or explanation target [yellow]{topic}[/yellow] not found in parsed modules.")
+
+
+def render_relationship_explanation(
+    source: str,
+    target: str,
+    arch_model: Any,
+    repo_builder: Any,
+):
+    """Explains why a direct dependency exists between two modules."""
+    from architecture.explanation import ExplanationEngine
+
+    engine = ExplanationEngine()
+    rel = engine.explain_relationship(source, target, arch_model, repo_builder)
+
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold cyan", width=20)
+    table.add_column(style="white")
+
+    table.add_row("Source Module:", rel.source)
+    table.add_row("Target Module:", rel.target)
+    table.add_row("Architectural Intent:", f"[bold green]{rel.architectural_intent}[/bold green]")
+    table.add_row("Summary:", rel.summary)
+
+    if rel.imported_symbols:
+        table.add_row("Imported Symbols:", ", ".join(f"[yellow]{s}[/yellow]" for s in rel.imported_symbols))
+    if rel.call_occurrences:
+        call_strs = [f"line {c.get('line', '?')}: {c.get('symbol', 'call')}" for c in rel.call_occurrences[:8]]
+        table.add_row("Call Sites:", ", ".join(call_strs))
+
+    console.print(Panel(table, title=f"[bold cyan]🔗 Dependency Intent: {rel.source} ➔ {rel.target}[/bold cyan]", border_style="green"))
+
+
 def main():
     console.print(ASCII_BANNER)
+
+    # Subcommand syntactic sugar handling:
+    # karuvi onboard [repo] [--level beginner]
+    # karuvi explain [repo] [target]
+    # karuvi explore [repo]
+    # karuvi analyze [repo]
+    if len(sys.argv) > 1:
+        cmd = sys.argv[1].lower()
+        if cmd == "onboard":
+            sys.argv[1] = "--onboard"
+            if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
+                repo_val = sys.argv.pop(2)
+                sys.argv.extend(["--repo", repo_val])
+        elif cmd == "explore":
+            sys.argv[1] = "--explore"
+            if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
+                repo_val = sys.argv.pop(2)
+                sys.argv.extend(["--repo", repo_val])
+        elif cmd == "explain":
+            if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
+                repo_val = sys.argv.pop(2)
+                sys.argv.extend(["--repo", repo_val])
+                if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
+                    target_val = sys.argv.pop(2)
+                    sys.argv[1] = f"--explain={target_val}"
+                else:
+                    sys.argv[1] = "--explain=repo"
+            else:
+                sys.argv[1] = "--explain=repo"
+        elif cmd == "analyze":
+            sys.argv.pop(1)
 
     parser = argparse.ArgumentParser(
         description="Karuvi — Whole-Repository Dependency Analyzer & Symbol Tracer",
@@ -674,6 +848,37 @@ def main():
         type=str,
         default=None,
         help="Path to repository root",
+    )
+    parser.add_argument(
+        "--onboard",
+        action="store_true",
+        help="Generate a beginner-friendly progressive onboarding course for the repository",
+    )
+    parser.add_argument(
+        "--level",
+        type=str,
+        choices=["beginner", "intermediate", "advanced"],
+        default="beginner",
+        help="Complexity level for onboarding and explanations (default: beginner)",
+    )
+    parser.add_argument(
+        "--explain",
+        nargs="?",
+        const="repo",
+        default=None,
+        help="Generate multi-level DeepWiki explanation (Level 1: repo overview, Level 2: 'arch', Level 3: module path)",
+    )
+    parser.add_argument(
+        "--why",
+        nargs=2,
+        metavar=("SOURCE", "TARGET"),
+        default=None,
+        help="Explain architectural intent and dependency relationship between SOURCE and TARGET modules",
+    )
+    parser.add_argument(
+        "--explore",
+        action="store_true",
+        help="Build and launch the Living Codebase Atlas interactive web visualizer in your browser",
     )
     parser.add_argument(
         "--json",
@@ -893,11 +1098,18 @@ def main():
             console.print(f"[bold red]Error:[/bold red] File {args.chart} not found in parsed modules.")
 
     arch_model = None
-    # Reconstructed Architecture Mode
-    if args.architecture or args.arch_json or args.arch_doc:
+    # Reconstructed Architecture Mode & DeepWiki Features
+    needs_arch_model = bool(
+        args.architecture
+        or args.arch_json
+        or args.arch_doc
+        or args.onboard
+        or (args.explain is not None)
+        or args.why
+        or args.explore
+    )
+    if needs_arch_model:
         from architecture.analyzer import ArchitectureAnalyzer
-        from architecture.documentation import generate_architecture_markdown
-        from architecture.serialization import export_architecture_json
 
         arch_analyzer = ArchitectureAnalyzer(repo_path)
         arch_model = arch_analyzer.analyze(builder)
@@ -906,15 +1118,38 @@ def main():
             render_architecture_dashboard(arch_model)
 
         if args.arch_json:
+            from architecture.serialization import export_architecture_json
             export_architecture_json(arch_model, args.arch_json)
             console.print(f"[bold green]✔[/bold green] Exported architecture model JSON to [cyan]{args.arch_json}[/cyan]")
 
         if args.arch_doc:
+            from architecture.documentation import generate_architecture_markdown
             doc_text = generate_architecture_markdown(arch_model)
             out_doc = Path(args.arch_doc)
             out_doc.parent.mkdir(parents=True, exist_ok=True)
             out_doc.write_text(doc_text, encoding="utf-8")
             console.print(f"[bold green]✔[/bold green] Exported architecture documentation to [cyan]{args.arch_doc}[/cyan]")
+
+        if args.onboard:
+            from architecture.onboarding import CodebaseOnboardingEngine
+            plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
+            render_onboarding_course(plan, level=args.level)
+
+        if args.explain is not None:
+            render_deepwiki_explanation(args.explain, arch_model, builder, level=args.level)
+
+        if args.why:
+            render_relationship_explanation(args.why[0], args.why[1], arch_model, builder)
+
+        if args.explore:
+            import webbrowser
+            atlas_path = Path(args.html) if args.html else (repo_path / "karuvi_atlas.html")
+            export_html_graph(builder, atlas_path, arch_model=arch_model)
+            try:
+                webbrowser.open(atlas_path.as_uri())
+                console.print("[dim green]Opened Living Codebase Atlas in default web browser.[/dim green]")
+            except Exception:
+                pass
 
     if args.interactive:
         interactive_menu(repo_path, parsed_modules, global_index, builder)
@@ -929,6 +1164,10 @@ def main():
         or args.graph
         or args.chart
         or args.architecture
+        or args.onboard
+        or (args.explain is not None)
+        or args.why
+        or args.explore
     )
 
     # If no specific inspection flag was provided, display dashboard
@@ -956,7 +1195,7 @@ def main():
     if json_path:
         export_full_json(repo_path, parsed_modules, builder, json_path)
 
-    if html_path:
+    if html_path and not args.explore:
         export_html_graph(builder, html_path, arch_model=arch_model)
 
     if args.mermaid:
