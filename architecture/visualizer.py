@@ -1,15 +1,14 @@
 """
-Karuvi Living Codebase Atlas — Unified Web Visualizer & DeepWiki-Pro-Max
-========================================================================
+Karuvi Living Codebase Atlas — Unified Web Visualizer & Architecture Cartography
+================================================================================
 
 Generates a standalone, interactive, dark-mode Single Page Web Application
-embodying Karuvi's 6 core modes:
+embodying Karuvi's core developer-focused modes:
 1. ◉ Overview: Executive codebase dashboard, vital metrics, and circular loop radar.
-2. 🎓 Teach Me / Onboarding: Interactive step-by-step codebase course with complexity toggles.
-3. 🏛️ Architecture: Discovered components, confidence scores, and architectural flows.
-4. 🕸️ Graph Explorer: Progressive graph disclosure, relation filters, and unrelated node greying.
-5. 📁 Code Explorer: Sourcetrail-grade side-by-side file tree and syntax-highlighted code viewer.
-6. 📖 DeepWiki Docs: Multi-level technical documentation (Levels 1–5).
+2. 🏛️ Architecture: Discovered components, architectural flows, and AI architecture guide.
+3. 🕸️ Graph Explorer: Module and architecture graphs on interactive vis.Network canvas with dynamic role filters.
+4. 📁 Code Explorer: Sourcetrail-grade 3-pane view with file tree, full Code Dependency Tree,
+                     and syntax-highlighted source code with line jumping.
 """
 from __future__ import annotations
 
@@ -20,9 +19,8 @@ from typing import Any
 
 from architecture.analyzer import ArchitectureAnalyzer
 from architecture.documentation import generate_architecture_markdown
-from architecture.explanation import ExplanationEngine
+from architecture.explanation import ArchitectureExplanationEngine
 from architecture.models import ArchitectureModel
-from architecture.onboarding import CodebaseOnboardingEngine
 
 
 def build_unified_payload(
@@ -31,7 +29,7 @@ def build_unified_payload(
 ) -> dict[str, Any]:
     """
     Assembles a unified data contract combining Stage 1 (AST, symbols, references, cycles)
-    and Stage 2 (components, module graph, metrics, roles, entrypoints, flows, onboarding, DeepWiki).
+    and Stage 2 (components, module graph, metrics, roles, entrypoints, flows, architecture summary).
     """
     repo_root = Path(repo_builder.project_root).resolve()
     if arch_model is None:
@@ -45,7 +43,22 @@ def build_unified_payload(
         c_dict["role"] = comp.metadata.get("role", "COMPONENT")
         components_list.append(c_dict)
 
-    # 2. Module list with enhanced architectural metadata and source code
+    # 2. Precompute cross-module references index for Code Dependency Trees
+    cross_refs = getattr(repo_builder, "cross_references", [])
+    cycles = getattr(repo_builder, "cycles", [])
+
+    # Map file -> inbound and outbound references
+    inbound_refs_by_target: dict[str, list[dict[str, Any]]] = {}
+    outbound_refs_by_source: dict[str, list[dict[str, Any]]] = {}
+    for xr in cross_refs:
+        src = xr.get("source_file")
+        tgt = xr.get("target_file")
+        if tgt:
+            inbound_refs_by_target.setdefault(tgt, []).append(xr)
+        if src:
+            outbound_refs_by_source.setdefault(src, []).append(xr)
+
+    # 3. Module list with enhanced architectural metadata and source code
     modules_list = []
     for mod_id, mod in arch_model.modules.items():
         node_raw = repo_builder.nodes.get(mod_id) if repo_builder else None
@@ -94,7 +107,7 @@ def build_unified_payload(
 
         role = arch_model.roles.get(mod_id, "MODULE")
 
-        # Read source code from disk (up to 200KB)
+        # Read source code from disk (up to 250KB)
         source_code = ""
         try:
             full_p = Path(mod.path)
@@ -104,6 +117,63 @@ def build_unified_payload(
                 source_code = full_p.read_text(encoding="utf-8", errors="replace")
         except Exception:
             source_code = ""
+
+        # Build Inbound Dependents & Outbound Dependencies Tree for this module
+        inbound_map: dict[str, dict[str, Any]] = {}
+        outbound_map: dict[str, dict[str, Any]] = {}
+
+        for xr in inbound_refs_by_target.get(mod_id, []):
+            src_m = xr.get("source_file")
+            if src_m and src_m != mod_id:
+                if src_m not in inbound_map:
+                    inbound_map[src_m] = {"module": src_m, "symbols": set(), "calls": []}
+                sym = xr.get("symbol")
+                if sym:
+                    inbound_map[src_m]["symbols"].add(sym)
+                inbound_map[src_m]["calls"].append({
+                    "symbol": sym,
+                    "line": xr.get("decl_line", 1),
+                    "scope": xr.get("scope", "caller"),
+                })
+
+        for xr in outbound_refs_by_source.get(mod_id, []):
+            tgt_m = xr.get("target_file")
+            if tgt_m and tgt_m != mod_id:
+                if tgt_m not in outbound_map:
+                    outbound_map[tgt_m] = {"module": tgt_m, "symbols": set(), "calls": []}
+                sym = xr.get("symbol")
+                if sym:
+                    outbound_map[tgt_m]["symbols"].add(sym)
+                outbound_map[tgt_m]["calls"].append({
+                    "symbol": sym,
+                    "line": xr.get("decl_line", 1),
+                    "scope": xr.get("scope", "call"),
+                })
+
+        # Ensure direct imports from module graph are also reflected
+        for inc_m in mod.incoming_modules:
+            if inc_m != mod_id and inc_m not in inbound_map:
+                inbound_map[inc_m] = {"module": inc_m, "symbols": set(), "calls": []}
+        for out_m in mod.outgoing_modules:
+            if out_m != mod_id and out_m not in outbound_map:
+                outbound_map[out_m] = {"module": out_m, "symbols": set(), "calls": []}
+
+        inbound_list = [
+            {
+                "module": v["module"],
+                "symbols": sorted(list(v["symbols"])),
+                "calls": v["calls"][:25],
+            }
+            for v in inbound_map.values()
+        ]
+        outbound_list = [
+            {
+                "module": v["module"],
+                "symbols": sorted(list(v["symbols"])),
+                "calls": v["calls"][:25],
+            }
+            for v in outbound_map.values()
+        ]
 
         modules_list.append({
             "id": mod_id,
@@ -131,9 +201,11 @@ def build_unified_payload(
             "classes": classes_data,
             "code_flow": code_flow,
             "source_code": source_code,
+            "inbound_dependents": inbound_list,
+            "outbound_dependencies": outbound_list,
         })
 
-    # 3. Component Graph Edges
+    # 4. Component Graph Edges
     comp_edges = []
     if arch_model.component_graph is not None:
         for u, v, d in arch_model.component_graph.edges(data=True):
@@ -144,7 +216,7 @@ def build_unified_payload(
                 "relationship_types": d.get("relationship_types", {}),
             })
 
-    # 4. Module Graph Edges
+    # 5. Module Graph Edges
     mod_edges = []
     if arch_model.module_graph is not None:
         for u, v, d in arch_model.module_graph.edges(data=True):
@@ -155,10 +227,6 @@ def build_unified_payload(
                 "relationship_types": d.get("relationship_types", {}),
                 "symbol_edges": d.get("symbol_edges", [])[:15],
             })
-
-    # 5. Raw Symbol References & Cycles
-    cross_refs = getattr(repo_builder, "cross_references", [])
-    cycles = getattr(repo_builder, "cycles", [])
 
     # 6. Overall Stats
     stats = {
@@ -174,11 +242,8 @@ def build_unified_payload(
         "circular_dependencies": len(cycles),
     }
 
-    # 7. Onboarding Reading Plan
-    onboarding_plan = CodebaseOnboardingEngine(arch_model, repo_builder).build_plan()
-
-    # 8. DeepWiki Explanations (Levels 1 to 5)
-    explanation_engine = ExplanationEngine()
+    # 7. AI Model Architecture Summaries (Levels 1 to 3)
+    explanation_engine = ArchitectureExplanationEngine()
     repo_explanation = explanation_engine.explain_repository(arch_model, repo_builder)
     arch_explanation = explanation_engine.explain_architecture(arch_model)
     mod_explanations = {
@@ -186,8 +251,18 @@ def build_unified_payload(
         for m in arch_model.modules
     }
 
-    # 9. Precomputed Markdown Documentation
+    # 8. Precomputed Markdown Documentation
     doc_markdown = generate_architecture_markdown(arch_model)
+
+    # 9. DeepWiki Architecture Structure & Pages
+    wiki_structure_dict = arch_model.wiki_structure.to_dict() if getattr(arch_model, "wiki_structure", None) else None
+    wiki_pages_dict = (
+        {k: v.to_dict() for k, v in arch_model.wiki_pages.items()}
+        if getattr(arch_model, "wiki_pages", None)
+        else {}
+    )
+    ai_provider = arch_model.metadata.get("provider", "gemini") if hasattr(arch_model, "metadata") else "gemini"
+    ai_model_name = arch_model.metadata.get("model", "gemini-2.5-flash") if hasattr(arch_model, "metadata") else "gemini-2.5-flash"
 
     return {
         "project_name": repo_root.name,
@@ -204,8 +279,11 @@ def build_unified_payload(
         "entrypoints": arch_model.entry_points,
         "flows": [f.to_dict() for f in arch_model.flows],
         "documentation_md": doc_markdown,
-        "onboarding": onboarding_plan.to_dict(),
-        "deepwiki": {
+        "wiki_structure": wiki_structure_dict,
+        "wiki_pages": wiki_pages_dict,
+        "ai_provider": ai_provider,
+        "ai_model": ai_model_name,
+        "architecture_summary": {
             "repository": repo_explanation,
             "architecture": arch_explanation,
             "modules": mod_explanations,
@@ -226,7 +304,7 @@ def generate_atlas_html(
     return HTML_TEMPLATE.replace("__KARUVI_PAYLOAD__", safe_payload_json)
 
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -239,182 +317,202 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
     :root {
-      --bg-canvas: #090d16;
-      --bg-surface: #0f172a;
-      --bg-card: #152037;
-      --bg-card-hover: #1c2b4a;
+      --bg-base: #050811;
+      --bg-surface: #0b1120;
+      --bg-card: #0f172a;
+      --bg-card-hover: #17223b;
       --border: #1e293b;
-      --border-subtle: #162238;
-      --border-glow: rgba(56, 189, 248, 0.4);
-      
-      --text: #f8fafc;
+      --border-highlight: #334155;
+      --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
-      
       --accent-blue: #38bdf8;
       --accent-cyan: #22d3ee;
       --accent-purple: #c084fc;
-      --accent-green: #10b981;
       --accent-amber: #f59e0b;
+      --accent-green: #10b981;
       --accent-rose: #f43f5e;
       
-      --role-entry: #38bdf8;
-      --role-bridge: #f59e0b;
+      --role-entry: #22d3ee;
       --role-hub: #c084fc;
+      --role-bridge: #f59e0b;
       --role-leaf: #10b981;
       --role-cycle: #f43f5e;
-      --role-isolated: #64748b;
+      --role-module: #38bdf8;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      background: var(--bg-canvas);
-      color: var(--text);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      height: 100vh;
-      overflow: hidden;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
     }
 
-    /* Top App Bar */
-    header {
-      height: 52px;
-      background: var(--bg-surface);
+    /* Top Navigation Header */
+    header.topbar {
+      height: 64px;
+      background: rgba(11, 17, 32, 0.85);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
-      flex-shrink: 0;
-      z-index: 100;
+      padding: 0 24px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
 
-    .brand-group {
+    .topbar-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .brand-logo {
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-weight: 800;
-      font-size: 17px;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
     }
 
-    .repo-pill {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-family: 'Fira Code', monospace;
-      font-size: 12px;
-      color: var(--accent-blue);
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }
 
-    .header-actions {
+    .logo-tag {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .topbar-right {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .search-trigger-btn {
+    .search-btn {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      color: var(--text-secondary);
-      font-size: 12px;
+      color: var(--text-muted);
       padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
+      border-radius: 8px;
+      font-size: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
+      cursor: pointer;
       transition: all 0.15s ease;
     }
-    .search-trigger-btn:hover {
+
+    .search-btn:hover {
       border-color: var(--accent-blue);
-      color: var(--text);
+      color: var(--text-primary);
     }
-    .kbd-shortcut {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      padding: 1px 5px;
+
+    kbd {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
       border-radius: 4px;
       font-size: 10px;
       font-family: 'Fira Code', monospace;
     }
 
-    /* Main App Layout */
+    /* App Body Layout */
     .app-container {
       display: flex;
       flex: 1;
-      overflow: hidden;
-      position: relative;
+      height: calc(100vh - 64px);
     }
 
-    /* Left Navigation Sidebar */
+    /* Navigation Sidebar */
     nav.sidebar {
-      width: 220px;
+      width: 240px;
       background: var(--bg-surface);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
-      padding: 14px 8px;
+      padding: 16px 12px;
+      gap: 6px;
     }
 
     .nav-section-label {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
       color: var(--text-muted);
-      padding: 6px 12px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.08em;
+      padding: 8px 12px 4px 12px;
     }
 
     .nav-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
       color: var(--text-secondary);
       cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
       transition: all 0.15s ease;
-      margin-bottom: 2px;
       user-select: none;
     }
 
     .nav-item:hover {
       background: var(--bg-card);
-      color: var(--text);
+      color: var(--text-primary);
     }
 
     .nav-item.active {
-      background: var(--bg-card);
-      color: #fff;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--accent-blue);
       font-weight: 600;
-      box-shadow: inset 3px 0 0 var(--accent-blue);
+      border: 1px solid rgba(56, 189, 248, 0.25);
     }
 
     .nav-item .icon {
-      font-size: 15px;
-      width: 18px;
-      text-align: center;
+      font-size: 16px;
     }
 
     .sidebar-footer {
       margin-top: auto;
-      padding: 12px;
-      border-top: 1px solid var(--border-subtle);
+      padding: 14px;
+      border-top: 1px solid var(--border);
       font-size: 11px;
       color: var(--text-muted);
       display: flex;
@@ -422,562 +520,42 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       gap: 4px;
     }
 
-    /* Workspace Content Panels */
+    /* Main Workspace */
     main.workspace {
       flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      overflow-y: auto;
+      background: var(--bg-base);
       position: relative;
     }
 
     .tab-view {
       display: none;
-      width: 100%;
-      height: 100%;
-      overflow-y: auto;
-      padding: 24px 32px;
+      min-height: 100%;
     }
 
     .tab-view.active {
       display: block;
     }
 
-    /* Common Card Styles */
-    .overview-hero {
-      margin-bottom: 24px;
-    }
-
-    .overview-hero h1 {
-      font-size: 26px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-    }
-
-    .overview-hero p {
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-      margin-bottom: 28px;
-    }
-
-    .stat-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .stat-card:hover {
-      border-color: var(--border-glow);
-    }
-
-    .stat-val {
-      font-size: 24px;
-      font-weight: 800;
-      font-family: 'Fira Code', monospace;
-      color: var(--accent-blue);
-    }
-
-    .stat-lbl {
-      font-size: 12px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    /* Entry Point Banner */
-    .banner-entrypoint {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      border-radius: 10px;
-      padding: 18px 22px;
-      margin-bottom: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .banner-content h3 {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--accent-blue);
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .banner-content .mod-title {
-      font-family: 'Fira Code', monospace;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 4px;
-    }
-
-    .banner-content p {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-    }
-
-    .btn-primary {
-      background: var(--accent-blue);
-      color: #090d16;
-      border: none;
-      font-size: 13px;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-    }
-
-    .btn-primary:hover {
-      background: #7dd3fc;
-      transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-      background: var(--bg-card);
-      color: var(--text);
-      border: 1px solid var(--border);
-      font-size: 13px;
-      font-weight: 500;
-      padding: 8px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-secondary:hover {
-      border-color: var(--accent-blue);
-      background: var(--bg-card-hover);
-    }
-
+    /* Common Components */
     .section-title {
       font-size: 16px;
       font-weight: 700;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Radar / Alert Cards */
-    .alert-card {
-      background: rgba(244, 63, 94, 0.08);
-      border: 1px solid rgba(244, 63, 94, 0.3);
-      border-radius: 8px;
-      padding: 14px 18px;
-      margin-bottom: 24px;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .alert-card.warning {
-      background: rgba(245, 158, 11, 0.08);
-      border-color: rgba(245, 158, 11, 0.3);
-      color: #fde68a;
-    }
-
-    /* Architecture Components Grid */
-    .comp-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-
-    .comp-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .comp-card:hover {
-      border-color: var(--accent-blue);
-      background: var(--bg-card);
-      transform: translateY(-2px);
-    }
-
-    .comp-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .comp-name {
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .confidence-badge {
-      font-size: 10px;
-      padding: 2px 7px;
-      border-radius: 4px;
-      font-family: 'Fira Code', monospace;
-      font-weight: 600;
-    }
-    .confidence-high { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
-    .confidence-med { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
-    .confidence-low { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
-
-    .comp-modules-list {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: 'Fira Code', monospace;
-      line-height: 1.6;
-    }
-
-    /* Flows */
-    .flows-container {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 32px;
-    }
-
-    .flow-row {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 18px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 13px;
-    }
-
-    .flow-node-badge {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-family: 'Fira Code', monospace;
-      font-weight: 600;
-      color: var(--accent-blue);
-    }
-
-    .flow-arrow {
-      color: var(--text-muted);
-      font-weight: bold;
-    }
-
-    /* ONBOARDING TAB */
-    #tab-onboard {
-      padding: 20px 28px;
-    }
-
-    .onboard-layout {
-      display: flex;
-      gap: 24px;
-      height: calc(100vh - 96px);
-    }
-
-    .onboard-sidebar {
-      width: 320px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .onboard-sidebar-header {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .onboard-sidebar-header h2 {
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .onboard-sidebar-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    .step-item-card {
-      padding: 10px 14px;
-      border-radius: 6px;
-      margin-bottom: 6px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      transition: all 0.15s ease;
-    }
-
-    .step-item-card:hover {
-      background: var(--bg-card);
-    }
-
-    .step-item-card.active {
-      background: var(--bg-card);
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
-    }
-
-    .step-item-card.completed .step-title-text {
-      color: var(--accent-green);
-    }
-
-    .step-num-badge {
-      font-size: 10px;
-      font-weight: 700;
-      font-family: 'Fira Code', monospace;
-      color: var(--text-muted);
-    }
-
-    .step-title-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .onboard-main {
-      flex: 1;
-      overflow-y: auto;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .complexity-selector {
-      display: flex;
-      gap: 6px;
-      background: var(--bg-canvas);
-      padding: 4px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      width: fit-content;
-    }
-
-    .complexity-btn {
-      padding: 5px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      border: none;
-      background: transparent;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .complexity-btn.active {
-      background: var(--bg-card);
-      color: var(--accent-blue);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-
-    .pill-tag {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      color: var(--text-secondary);
-      font-family: 'Fira Code', monospace;
-    }
-
-    /* GRAPH EXPLORER TAB */
-    #tab-graph {
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    .graph-layout {
-      display: flex;
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-
-    .graph-canvas-container {
-      flex: 1;
-      height: 100%;
-      position: relative;
-      background: radial-gradient(circle at center, #111827 0%, #090d16 100%);
-    }
-
-    #network-canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .graph-floating-controls {
-      position: absolute;
-      top: 14px;
-      left: 16px;
-      z-index: 10;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 12px;
-    }
-
-    .pill-group {
-      display: flex;
-      background: var(--bg-canvas);
-      padding: 2px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-    }
-
-    .pill-opt {
-      padding: 4px 10px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      cursor: pointer;
-      border-radius: 4px;
-      user-select: none;
-    }
-
-    .pill-opt.active {
-      background: var(--accent-blue);
-      color: #090d16;
-    }
-
-    .filter-checkboxes {
-      display: flex;
-      gap: 10px;
-      font-size: 11px;
-      color: var(--text-secondary);
-      user-select: none;
-    }
-
-    .filter-checkboxes label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-    }
-
-    .graph-inspector {
-      width: 340px;
-      background: var(--bg-surface);
-      border-left: 1px solid var(--border);
-      height: 100%;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
-
-    .inspector-title {
-      font-size: 18px;
-      font-weight: 700;
-      font-family: 'Fira Code', monospace;
-      margin-bottom: 4px;
-      word-break: break-all;
-    }
-
-    .inspector-sub {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-bottom: 16px;
-    }
-
-    .inspector-prop {
-      display: flex;
-      justify-content: space-between;
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 12px;
-    }
-    .inspector-prop .lbl { color: var(--text-muted); }
-    .inspector-prop .val { font-weight: 600; font-family: 'Fira Code', monospace; }
-
-    /* CODE EXPLORER TAB (Sourcetrail Style Side-by-Side) */
-    #tab-code {
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    .code-layout {
-      display: flex;
-      width: 100%;
-      height: 100%;
-      background: var(--bg-canvas);
-    }
-
-    .file-tree-pane {
-      width: 280px;
-      border-right: 1px solid var(--border);
-      background: var(--bg-surface);
-      overflow-y: auto;
-      padding: 12px 6px;
-      flex-shrink: 0;
-    }
-
-    .file-tree-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-family: 'Fira Code', monospace;
-      color: var(--text-secondary);
-      cursor: pointer;
-      user-select: none;
-      margin-bottom: 2px;
-    }
-
-    .file-tree-item:hover {
-      background: var(--bg-card);
-      color: var(--text);
-    }
-
-    .file-tree-item.active {
-      background: var(--bg-card);
       color: #fff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
       font-weight: 600;
-      border-left: 3px solid var(--accent-blue);
+      font-family: 'Fira Code', monospace;
     }
 
     .role-badge {
@@ -985,57 +563,887 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 600;
+      text-transform: uppercase;
+      font-family: 'Fira Code', monospace;
     }
 
-    .code-viewer-pane {
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #0284c7);
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-highlight);
+    }
+
+    /* ============================================================== */
+    /* VIEW 1: OVERVIEW HERO & METRICS                                */
+    /* ============================================================== */
+    #tab-overview {
+      padding: 32px 40px;
+    }
+
+    .overview-hero {
+      margin-bottom: 32px;
+    }
+
+    .overview-hero h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .overview-hero p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      max-width: 700px;
+      line-height: 1.6;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      transition: all 0.15s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-highlight);
+      transform: translateY(-2px);
+    }
+
+    .stat-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Fira Code', monospace;
+      margin-bottom: 4px;
+    }
+
+    .stat-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .banner-entrypoint {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(56, 189, 248, 0.04));
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .banner-content h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+
+    .banner-content .mod-title {
+      font-family: 'Fira Code', monospace;
+      font-size: 18px;
+      color: #fff;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .banner-content p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 600px;
+    }
+
+    /* Radar / Cycles Warning */
+    .radar-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .radar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .cycle-item {
+      background: rgba(244, 63, 94, 0.06);
+      border: 1px solid rgba(244, 63, 94, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      color: #fecdd3;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ============================================================== */
+    /* VIEW 2: ARCHITECTURE                                           */
+    /* ============================================================== */
+    #tab-architecture {
+      padding: 32px 40px;
+    }
+
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .comp-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .comp-card:hover {
+      border-color: var(--accent-blue);
+      transform: translateY(-2px);
+    }
+
+    .comp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .comp-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .comp-confidence {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-family: 'Fira Code', monospace;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .comp-modules-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      color: var(--text-secondary);
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .flows-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .flow-row {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow-x: auto;
+    }
+
+    .flow-step {
+      background: var(--bg-card);
+      border: 1px solid var(--border-highlight);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .flow-arrow {
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+
+    .arch-doc-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      line-height: 1.7;
+    }
+
+    /* ============================================================== */
+    /* VIEW 3: GRAPH EXPLORER                                         */
+    /* ============================================================== */
+    #tab-graph {
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #tab-graph.active {
+      display: flex;
+    }
+
+    .graph-layout {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .graph-canvas-container {
       flex: 1;
       height: 100%;
+      width: 100%;
+      position: relative;
+      background: #070b14;
+      overflow: hidden;
+    }
+
+    #network-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* DeepWiki Architecture Wiki & Toolbar */
+    .deepwiki-toolbar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .deepwiki-toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .deepwiki-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .deepwiki-provider-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: 'Fira Code', monospace;
+    }
+
+    .deepwiki-layout {
+      display: flex;
+      gap: 20px;
+      min-height: 520px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+
+    .deepwiki-sidebar {
+      width: 280px;
+      background: #090e1a;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .deepwiki-sidebar-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #fff;
+    }
+
+    .deepwiki-nav-tree {
+      padding: 12px 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 580px;
+    }
+
+    .deepwiki-nav-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 10px 10px 4px 10px;
+    }
+
+    .deepwiki-nav-item {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .deepwiki-nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .deepwiki-nav-item.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      font-weight: 600;
+      border-left: 3px solid var(--accent-blue);
+    }
+
+    .deepwiki-pill-high {
+      font-size: 9px;
+      font-weight: 700;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .deepwiki-content-area {
+      flex: 1;
+      padding: 32px 40px;
+      overflow-y: auto;
+      max-height: 620px;
+      line-height: 1.7;
+    }
+
+    .deepwiki-page-view details {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+    }
+
+    .deepwiki-page-view details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      outline: none;
+      user-select: none;
+    }
+
+    .deepwiki-page-view table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 12px;
+    }
+
+    .deepwiki-page-view th, .deepwiki-page-view td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .deepwiki-page-view th {
+      background: rgba(15, 23, 42, 0.9);
+      color: #fff;
+    }
+
+    /* Modal Backdrop and Card */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-card {
+      background: #0f172a;
+      border: 1px solid var(--border-highlight);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input {
+      background: #090e1a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 12px;
+      color: #fff;
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: rgba(11, 17, 32, 0.6);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .graph-floating-controls {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pill-group {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .pill-opt {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .pill-opt:hover {
+      color: var(--text-primary);
+    }
+
+    .pill-opt.active {
+      background: var(--accent-blue);
+      color: #050811;
+      font-weight: 700;
+    }
+
+    /* Role Filter Group */
+    .role-filter-group {
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .role-filter-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding-right: 4px;
+    }
+
+    .role-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Fira Code', monospace;
+      transition: all 0.15s ease;
+    }
+
+    .role-btn:hover {
+      color: #fff;
+      border-color: var(--border-highlight);
+    }
+
+    .role-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: currentColor;
+    }
+
+    .graph-inspector {
+      width: 320px;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .inspector-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .inspector-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'Fira Code', monospace;
+    }
+
+    .inspector-prop {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .inspector-prop .lbl { color: var(--text-muted); }
+    .inspector-prop .val { font-weight: 600; color: #fff; font-family: 'Fira Code', monospace; }
+
+    /* ============================================================== */
+    /* VIEW 4: SOURCETRAIL CODE EXPLORER & CODE DEPENDENCY TREE       */
+    /* ============================================================== */
+    #tab-code {
+      height: 100%;
+      display: none;
+      overflow: hidden;
+    }
+
+    #tab-code.active {
+      display: block;
+    }
+
+    .code-layout {
+      display: grid;
+      grid-template-columns: 240px 340px 1fr;
+      height: 100%;
+      background: var(--bg-card);
+      overflow: hidden;
+    }
+
+    /* Left Pane: File Tree */
+    .file-tree-pane {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .file-tree-item {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'Fira Code', monospace;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: all 0.1s ease;
+    }
+
+    .file-tree-item:hover {
+      background: var(--bg-card);
+      color: #fff;
+    }
+
+    .file-tree-item.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-blue);
+      font-weight: 600;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Middle Pane: Code Dependency Tree */
+    .code-deptree-pane {
+      background: #090e1a;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .deptree-header {
+      padding: 14px 16px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .deptree-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .deptree-content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .deptree-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .deptree-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .deptree-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-family: 'Fira Code', monospace;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .deptree-node:hover {
+      border-color: var(--accent-blue);
+      background: var(--bg-card);
+    }
+
+    .deptree-node-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .deptree-node-symbols {
+      color: var(--accent-cyan);
+      font-size: 10px;
+      padding-left: 12px;
+      line-height: 1.5;
+    }
+
+    .deptree-call-item {
+      color: var(--text-secondary);
+      font-size: 10px;
+      padding-left: 12px;
+    }
+
+    /* Right Pane: Code Viewer */
+    .code-viewer-pane {
+      background: var(--bg-base);
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
     .code-viewer-header {
-      height: 52px;
+      padding: 12px 20px;
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      padding: 0 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-shrink: 0;
     }
 
     .code-viewer-content {
       flex: 1;
       overflow: auto;
-      padding: 16px;
-      background: #090d16;
+      padding: 16px 20px;
       font-family: 'Fira Code', monospace;
       font-size: 12px;
       line-height: 1.6;
     }
 
     .code-table {
-      border-collapse: collapse;
       width: 100%;
+      border-collapse: collapse;
     }
-    .code-table td {
-      vertical-align: top;
-      padding: 0 8px;
-    }
+
     .code-line-num {
       width: 44px;
-      text-align: right;
       color: var(--text-muted);
+      text-align: right;
+      padding-right: 16px;
       user-select: none;
-      opacity: 0.5;
-      font-size: 11px;
+      border-right: 1px solid var(--border);
     }
+
     .code-line-text {
-      white-space: pre-wrap;
-      word-break: break-all;
+      padding-left: 16px;
+      white-space: pre;
       color: #e2e8f0;
+    }
+
+    .code-line-highlight {
+      background: rgba(56, 189, 248, 0.12);
     }
 
     /* Syntax highlight colors */
@@ -1045,90 +1453,47 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .syntax-str { color: #10b981; }
     .syntax-cmt { color: #64748b; font-style: italic; }
 
-    /* DEEPWIKI DOCS TAB */
-    #tab-docs {
-      padding: 24px 36px;
-    }
-
-    .docs-container {
-      max-width: 900px;
-      margin: 0 auto;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 36px 44px;
-      line-height: 1.7;
-    }
-
-    .docs-nav-tabs {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 12px;
-      margin-bottom: 24px;
-    }
-
-    .docs-tab-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .docs-tab-btn.active {
-      background: var(--accent-blue);
-      color: #090d16;
-      border-color: var(--accent-blue);
-    }
-
-    .docs-container h1 { font-size: 26px; font-weight: 800; margin-bottom: 16px; color: #fff; }
-    .docs-container h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 12px; color: var(--accent-blue); border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px; }
-    .docs-container h3 { font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px; color: #fff; }
-    .docs-container p { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; }
-    .docs-container ul { margin-left: 20px; margin-bottom: 16px; font-size: 14px; color: var(--text-secondary); }
-    .docs-container code { font-family: 'Fira Code', monospace; background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--accent-cyan); }
-
-    /* Modal Global Search */
+    /* Global Search Modal */
     .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(4px);
-      z-index: 200;
       display: none;
-      align-items: flex-start;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(5, 8, 17, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
       justify-content: center;
-      padding-top: 100px;
     }
-    .modal-overlay.active { display: flex; }
+
+    .modal-overlay.active {
+      display: flex;
+    }
 
     .search-modal {
       width: 580px;
+      max-width: 90vw;
       background: var(--bg-surface);
-      border: 1px solid var(--border-glow);
-      border-radius: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
       overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
     }
 
     .search-input-wrap {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 14px 18px;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg-card);
     }
+
     .search-input-wrap input {
       flex: 1;
       background: transparent;
       border: none;
-      outline: none;
-      font-size: 15px;
       color: #fff;
+      font-size: 15px;
+      outline: none;
       font-family: inherit;
     }
 
@@ -1138,33 +1503,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       padding: 8px;
     }
 
-    .search-res-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 9px 12px;
+    .search-item {
+      padding: 10px 14px;
       border-radius: 6px;
       cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.1s ease;
     }
-    .search-res-item:hover {
-      background: var(--bg-card-hover);
+
+    .search-item:hover {
+      background: var(--bg-card);
     }
   </style>
 </head>
 <body>
-  <!-- Header App Bar -->
-  <header>
-    <div class="brand-group">
-      <div class="brand-logo">
-        <span>⚡ KARUVI</span>
-      </div>
-      <div class="repo-pill" id="header-repo-name">Repository</div>
-    </div>
 
-    <div class="header-actions">
-      <button class="search-trigger-btn" id="open-search-btn">
-        <span>Search symbols, modules, components...</span>
-        <span class="kbd-shortcut">⌘K</span>
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="#" class="logo-badge">
+        <div class="logo-icon">K</div>
+        <div class="logo-text">KARUVI</div>
+      </a>
+      <span class="logo-tag">Living Atlas</span>
+      <span style="color: var(--text-muted); font-size: 13px;" id="header-project-name">Loading...</span>
+    </div>
+    <div class="topbar-right">
+      <button class="search-btn" id="btn-open-search">
+        <span>Search Codebase</span>
+        <kbd>⌘K</kbd>
       </button>
     </div>
   </header>
@@ -1173,14 +1542,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="app-container">
     <!-- Navigation Sidebar -->
     <nav class="sidebar">
-      <div class="nav-section-label">Modes</div>
+      <div class="nav-section-label">Cartography</div>
       <div class="nav-item active" data-tab="overview">
         <span class="icon">◉</span>
         <span>Overview</span>
-      </div>
-      <div class="nav-item" data-tab="onboard">
-        <span class="icon">🎓</span>
-        <span>Teach Me</span>
       </div>
       <div class="nav-item" data-tab="architecture">
         <span class="icon">🏛️</span>
@@ -1194,14 +1559,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <span class="icon">📁</span>
         <span>Code Explorer</span>
       </div>
-      <div class="nav-item" data-tab="docs">
-        <span class="icon">📖</span>
-        <span>DeepWiki Docs</span>
-      </div>
 
       <div class="sidebar-footer">
         <span>Deterministic Intelligence</span>
-        <span style="opacity: 0.6;">Karuvi v0.2.0 • DeepWiki-Pro-Max</span>
+        <span style="opacity: 0.6;">Karuvi v0.2.0</span>
       </div>
     </nav>
 
@@ -1212,7 +1573,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="tab-view active" id="tab-overview">
         <div class="overview-hero">
           <h1>Codebase Intelligence & Cartography</h1>
-          <p>Deterministic architecture reconstruction, topological graph analysis, and progressive onboarding.</p>
+          <p>Deterministic architecture reconstruction, topological graph analysis, and code dependency trees.</p>
         </div>
 
         <div class="stat-grid" id="stats-container"></div>
@@ -1225,98 +1586,125 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <p id="entry-mod-desc">This module sits structurally high and can reach major portions of the repository.</p>
           </div>
           <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" id="btn-start-onboarding">Start Onboarding Course ➔</button>
+            <button class="btn-primary" onclick="window.switchTab('graph')">Explore Module Graph ➔</button>
             <button class="btn-secondary" id="btn-jump-code">View Code</button>
           </div>
         </div>
 
-        <!-- Radar Alert for Cycles -->
-        <div id="overview-cycle-radar" style="display: none;"></div>
-
-        <!-- Key Architectural Insights -->
-        <div class="section-title">🌉 Structural Bridges & Central Modules</div>
-        <div id="bridges-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 30px;"></div>
-      </div>
-
-      <!-- VIEW 2: TEACH ME / ONBOARDING -->
-      <div class="tab-view" id="tab-onboard">
-        <div class="onboard-layout">
-          <div class="onboard-sidebar">
-            <div class="onboard-sidebar-header">
-              <h2>Course Roadmap</h2>
-              <span class="pill-tag" id="onboard-total-steps-badge">0 steps</span>
-            </div>
-            <div class="onboard-sidebar-list" id="onboard-steps-list"></div>
+        <!-- Circular Dependencies Radar -->
+        <div class="radar-container" id="radar-container">
+          <div class="radar-header">
+            <div class="section-title" style="margin-bottom: 0;">⚠️ Circular Dependency Radar</div>
+            <span class="badge" id="cycles-badge" style="background: rgba(244, 63, 94, 0.1); color: var(--accent-rose);">0 loops detected</span>
           </div>
-
-          <div class="onboard-main" id="onboard-detail-card">
-            <div style="color: var(--text-muted); font-size: 14px;">Select an onboarding step on the left to begin learning.</div>
-          </div>
+          <div id="cycles-list"></div>
         </div>
       </div>
 
-      <!-- VIEW 3: ARCHITECTURE -->
+      <!-- VIEW 2: ARCHITECTURE (DeepWiki Architecture Cartography & Wiki) -->
       <div class="tab-view" id="tab-architecture">
-        <div class="section-title">🏛️ Discovered Architectural Components</div>
+        <!-- DeepWiki AI Provider & Model Toolbar -->
+        <div class="deepwiki-toolbar">
+          <div class="deepwiki-toolbar-left">
+            <span class="deepwiki-badge">📖 DeepWiki Architecture Engine</span>
+            <span class="deepwiki-provider-info" id="deepwiki-current-model">AI Provider: Gemini (gemini-2.5-flash)</span>
+          </div>
+          <div class="deepwiki-toolbar-right">
+            <button class="btn-secondary" id="btn-open-provider-modal">⚙️ AI Model & Provider</button>
+          </div>
+        </div>
+
+        <div class="deepwiki-layout">
+          <!-- DeepWiki Wiki Navigation Sidebar -->
+          <div class="deepwiki-sidebar" id="deepwiki-sidebar">
+            <div class="deepwiki-sidebar-header">Architecture Wiki</div>
+            <div class="deepwiki-nav-tree" id="deepwiki-nav-tree"></div>
+          </div>
+
+          <!-- DeepWiki Main Wiki Content Area -->
+          <div class="deepwiki-content-area">
+            <div id="deepwiki-page-view" class="deepwiki-page-view"></div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 36px;">🏛️ Discovered Subsystems & Components</div>
         <div class="comp-grid" id="arch-components-grid"></div>
 
         <div class="section-title">🌊 High-Level Architectural Flows</div>
         <div class="flows-container" id="arch-flows-container"></div>
       </div>
 
-      <!-- VIEW 4: GRAPH EXPLORER WITH PROGRESSIVE DISCLOSURE -->
+      <!-- VIEW 3: GRAPH EXPLORER (Modules & Architecture Graph on Vis.Network) -->
       <div class="tab-view" id="tab-graph">
         <div class="graph-layout">
           <div class="graph-canvas-container">
             <div class="graph-floating-controls">
+              <!-- Modules and Architecture Graph only (no symbols) -->
               <div class="pill-group" id="graph-level-pills">
-                <div class="pill-opt active" data-level="architecture">Architecture</div>
-                <div class="pill-opt" data-level="modules">Modules (All)</div>
-                <div class="pill-opt" data-level="symbols">Symbols (Deep)</div>
+                <div class="pill-opt active" data-level="modules">Modules</div>
+                <div class="pill-opt" data-level="architecture">Architecture Graph</div>
               </div>
-              <div class="filter-checkboxes">
-                <label><input type="checkbox" id="chk-filter-calls" checked> Calls</label>
-                <label><input type="checkbox" id="chk-filter-imports" checked> Imports</label>
-                <label><input type="checkbox" id="chk-filter-refs" checked> References</label>
+              <!-- Role Filter Buttons -->
+              <div class="role-filter-group" id="role-filter-group">
+                <span class="role-filter-lbl">Role:</span>
+                <button class="role-btn active" data-role="ALL">All</button>
+                <button class="role-btn" data-role="ENTRY_CANDIDATE" style="color: var(--role-entry);">Entry</button>
+                <button class="role-btn" data-role="HUB" style="color: var(--role-hub);">Hub</button>
+                <button class="role-btn" data-role="BRIDGE" style="color: var(--role-bridge);">Bridge</button>
+                <button class="role-btn" data-role="LEAF" style="color: var(--role-leaf);">Leaf</button>
+                <button class="role-btn" data-role="CYCLE_MEMBER" style="color: var(--role-cycle);">Cycle</button>
               </div>
-              <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" id="btn-fold-all">Fold All</button>
+              <div class="pill-group" id="graph-edge-filters" style="padding: 2px 8px; font-size: 11px;">
+                <label style="display:flex; align-items:center; gap:4px; margin-right:8px;"><input type="checkbox" id="chk-filter-calls" checked> Calls</label>
+                <label style="display:flex; align-items:center; gap:4px; margin-right:8px;"><input type="checkbox" id="chk-filter-imports" checked> Imports</label>
+                <label style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="chk-filter-refs" checked> Refs</label>
+              </div>
             </div>
+
+            <!-- Vis Network Canvas for Modules and Architecture Components -->
             <div id="network-canvas"></div>
           </div>
+
+          <!-- Inspector Panel -->
           <div class="graph-inspector" id="graph-inspector">
             <div class="inspector-title" id="insp-title">Select a Node</div>
-            <div class="inspector-sub" id="insp-sub">Click any component or module in the canvas to inspect evidence. Unrelated nodes will dim automatically.</div>
+            <div class="inspector-sub" id="insp-sub">Click any module or component to inspect its relationships. Double-click to jump to Code Explorer.</div>
             <div id="insp-body"></div>
           </div>
         </div>
       </div>
 
-      <!-- VIEW 5: SOURCETRAIL CODE EXPLORER -->
+      <!-- VIEW 4: SOURCETRAIL CODE EXPLORER & CODE DEPENDENCY TREE -->
       <div class="tab-view" id="tab-code">
         <div class="code-layout">
+          <!-- 1. File Tree -->
           <div class="file-tree-pane" id="code-file-tree"></div>
+
+          <!-- 2. Code Dependency Tree Pane -->
+          <div class="code-deptree-pane" id="code-deptree-pane">
+            <div class="deptree-header">
+              <span class="deptree-title">🌿 Code Dependency Tree</span>
+              <span class="badge" id="deptree-stats-badge" style="background: rgba(56, 189, 248, 0.1); color: var(--accent-blue);">0 In / 0 Out</span>
+            </div>
+            <div class="deptree-content" id="deptree-content">
+              <div style="color: var(--text-muted); font-size: 12px; line-height: 1.6;">
+                Select a module on the left to inspect its inbound callers, outbound imports, and symbol call hierarchy.
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Code Viewer Pane -->
           <div class="code-viewer-pane" id="code-viewer-pane">
             <div class="code-viewer-header" id="code-viewer-header">
               <div style="font-family: 'Fira Code', monospace; font-size: 13px; font-weight: 600; color: #fff;" id="code-file-path">Select a file from the tree</div>
               <div id="code-header-actions"></div>
             </div>
             <div class="code-viewer-content" id="code-viewer-content">
-              <div style="color: var(--text-muted); font-size: 13px; padding: 20px;">Select a file on the left to inspect its syntax-highlighted source code, AST hierarchy, and symbol bindings.</div>
+              <div style="color: var(--text-muted); font-size: 13px; padding: 20px;">
+                Select a file to inspect its syntax-highlighted source code, AST hierarchy, and symbol bindings.
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- VIEW 6: DEEPWIKI DOCS -->
-      <div class="tab-view" id="tab-docs">
-        <div class="docs-container">
-          <div class="docs-nav-tabs">
-            <button class="docs-tab-btn active" data-doclevel="repo">1. Repository Overview</button>
-            <button class="docs-tab-btn" data-doclevel="arch">2. Architecture Subsystems</button>
-            <button class="docs-tab-btn" data-doclevel="modules">3. Module Encyclopedia</button>
-            <button class="docs-tab-btn" data-doclevel="rel">5. Relationship Inspector</button>
-          </div>
-          <div id="docs-level-content"></div>
         </div>
       </div>
 
@@ -1338,303 +1726,167 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <script>
     window.KARUVI_DATA = __KARUVI_PAYLOAD__;
     window.__KARUVI_DATA__ = window.KARUVI_DATA;
-  </script>
 
-  <!-- Interactive Application Logic -->
-  <script>
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
       const data = window.KARUVI_DATA;
       if (!data) return;
 
-      // Header repository label
-      document.getElementById('header-repo-name').textContent = data.project_name || 'Codebase';
+      // Header Project Name
+      const headerTitleEl = document.getElementById('header-project-name');
+      if (headerTitleEl) {
+        headerTitleEl.textContent = `${data.project_name} (${data.stats.total_modules} modules • ${data.stats.total_components} components)`;
+      }
 
       // -------------------------------------------------------------
       // Tab Navigation
       // -------------------------------------------------------------
-      const navItems = document.querySelectorAll('.nav-item');
+      const navItems = document.querySelectorAll('.sidebar .nav-item');
       const tabViews = document.querySelectorAll('.tab-view');
 
-      function switchTab(targetTab) {
-        navItems.forEach(n => n.classList.toggle('active', n.dataset.tab === targetTab));
-        tabViews.forEach(v => v.classList.toggle('active', v.id === `tab-${targetTab}`));
-        if (targetTab === 'graph') {
-          setTimeout(() => initOrFitNetwork(), 50);
+      window.switchTab = function(tabId) {
+        navItems.forEach(n => n.classList.toggle('active', n.dataset.tab === tabId));
+        tabViews.forEach(v => v.classList.toggle('active', v.id === `tab-${tabId}`));
+
+        if (tabId === 'graph') {
+          setTimeout(() => {
+            initOrFitNetwork();
+            if (network) {
+              network.setSize('100%', '100%');
+              network.redraw();
+              network.fit({ animation: { duration: 250 } });
+            }
+          }, 60);
         }
-      }
-      window.switchTab = switchTab;
-      window.switchView = switchTab;
+      };
 
       navItems.forEach(item => {
-        item.addEventListener('click', () => switchTab(item.dataset.tab));
+        item.addEventListener('click', () => {
+          switchTab(item.dataset.tab);
+        });
       });
 
-      document.getElementById('btn-start-onboarding').addEventListener('click', () => switchTab('onboard'));
-      document.getElementById('btn-jump-code').addEventListener('click', () => switchTab('code'));
+      // -------------------------------------------------------------
+      // 1. Overview Dashboard
+      // -------------------------------------------------------------
+      const statsContainer = document.getElementById('stats-container');
+      const st = data.stats;
+      statsContainer.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-val">${st.total_modules}</div>
+          <div class="stat-lbl">Python Modules</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${st.total_components}</div>
+          <div class="stat-lbl">Architectural Layers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${st.total_symbols}</div>
+          <div class="stat-lbl">Symbols & Callables</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${st.total_lines}</div>
+          <div class="stat-lbl">Lines of Code</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">${st.total_module_edges}</div>
+          <div class="stat-lbl">Dependency Edges</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" style="color: ${st.circular_dependencies > 0 ? 'var(--accent-rose)' : 'var(--accent-green)'}">
+            ${st.circular_dependencies}
+          </div>
+          <div class="stat-lbl">Circular Loops</div>
+        </div>
+      `;
+
+      // Entrypoint Banner
+      const topEntry = (data.entry_points || [])[0];
+      if (topEntry) {
+        document.getElementById('entry-mod-name').textContent = topEntry.module;
+        let entryEvidence = '';
+        if (Array.isArray(topEntry.evidence)) {
+          entryEvidence = topEntry.evidence.join(', ');
+        } else if (topEntry.evidence && typeof topEntry.evidence === 'object') {
+          entryEvidence = Object.entries(topEntry.evidence)
+            .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+            .join(', ');
+        } else {
+          entryEvidence = String(topEntry.evidence || '');
+        }
+        document.getElementById('entry-mod-desc').textContent = 
+          `Identified with reach score ${topEntry.entry_score}. Evidence: ${entryEvidence || 'Low inbound coupling, high reachable hierarchy.'}`;
+        
+        document.getElementById('btn-jump-code').onclick = () => {
+          window.selectModule(topEntry.module, true);
+        };
+      }
+
+      // Circular Dependencies Radar
+      const cyclesListEl = document.getElementById('cycles-list');
+      const cycles = data.cycles || [];
+      const badge = document.getElementById('cycles-badge');
+      if (cycles.length === 0) {
+        badge.textContent = 'Clean DAG (0 loops)';
+        badge.style.background = 'rgba(16, 185, 129, 0.1)';
+        badge.style.color = 'var(--accent-green)';
+        cyclesListEl.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No circular dependencies detected. Architecture flows acyclically.</div>';
+      } else {
+        badge.textContent = `${cycles.length} circular loops detected`;
+        cyclesListEl.innerHTML = cycles.map(c => `
+          <div class="cycle-item">
+            <span>⚠️ Loop:</span>
+            <span>${Array.isArray(c) ? c.join(' ➔ ') : String(c)}</span>
+          </div>
+        `).join('');
+      }
 
       // -------------------------------------------------------------
-      // 1. Overview Tab
+      // 2. Architecture View
       // -------------------------------------------------------------
-      const statsGrid = document.getElementById('stats-container');
-      const stats = data.stats || {};
-      const statItems = [
-        { val: stats.total_modules || 0, lbl: 'Modules' },
-        { val: stats.total_components || 0, lbl: 'Components' },
-        { val: stats.total_symbols || 0, lbl: 'Symbols Indexed' },
-        { val: stats.total_module_edges || 0, lbl: 'Module Edges' },
-        { val: stats.total_cycles || 0, lbl: 'Circular Loops' },
-      ];
-      statsGrid.innerHTML = statItems.map(s => `
-        <div class="stat-card">
-          <div class="stat-val">${s.val}</div>
-          <div class="stat-lbl">${s.lbl}</div>
+      const compGrid = document.getElementById('arch-components-grid');
+      compGrid.innerHTML = (data.components || []).map(c => `
+        <div class="comp-card">
+          <div class="comp-header">
+            <div>
+              <div class="comp-name">${c.name}</div>
+              <span class="role-badge" style="color: var(--accent-blue); background: rgba(56, 189, 248, 0.1);">${c.role}</span>
+            </div>
+            <div class="comp-confidence">${Math.round(c.confidence * 100)}% Match</div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted);">${(c.modules || []).length} modules:</div>
+          <div class="comp-modules-list">
+            ${(c.modules || []).map(m => `<div>• ${m}</div>`).join('')}
+          </div>
+          <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px; justify-content: center; margin-top: auto;" onclick="window.inspectComponent('${c.id}')">
+            View in Graph Explorer ➔
+          </button>
         </div>
       `).join('');
 
-      // Entry point
-      if (data.entry_points && data.entry_points.length > 0) {
-        const topEp = data.entry_points[0];
-        document.getElementById('entry-mod-name').textContent = topEp.module;
-        const ev = topEp.evidence || {};
-        document.getElementById('entry-mod-desc').textContent = 
-          `Scores highest in downstream reach with 0 cyclic blocks. Directly reaches ${ev.reachable_modules || 0} modules across ${ev.reachable_components || 0} architectural components.`;
-      }
-
-      // Cycle Radar
-      const cycles = data.cycles || [];
-      const cycleRadarEl = document.getElementById('overview-cycle-radar');
-      if (cycles.length > 0) {
-        cycleRadarEl.style.display = 'block';
-        cycleRadarEl.innerHTML = `
-          <div class="alert-card warning">
-            <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-              <span>⚠️ Circular Dependency Radar</span>
-              <span class="pill-tag" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">${cycles.length} loop(s) detected</span>
-            </div>
-            <div>Multi-module cyclic loops can cause tight coupling and initialization surprises. These are grouped into unified conceptual steps in the Onboarding course.</div>
-            <div style="margin-top: 8px; font-family: 'Fira Code', monospace; font-size: 11px;">
-              ${cycles.map((c, i) => `<div>Loop #${i+1}: ${c.join(' ➔ ')}</div>`).join('')}
-            </div>
-          </div>
-        `;
-      }
-
-      // Bridges
-      const bridgesContainer = document.getElementById('bridges-container');
-      const bridgeMods = (data.modules || []).filter(m => m.role === 'BRIDGE' || m.role === 'HUB').slice(0, 4);
-      if (bridgeMods.length > 0) {
-        bridgesContainer.innerHTML = bridgeMods.map(m => `
-          <div class="stat-card" style="cursor: pointer;" onclick="window.selectModule('${m.id}')">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span class="role-badge" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3);">
-                ${m.role === 'BRIDGE' ? '🌉 Bridge' : '⚡ Hub'}
-              </span>
-              <span style="font-size: 11px; color: var(--text-muted);">${m.component_name}</span>
-            </div>
-            <div style="font-weight: 700; font-family: 'Fira Code', monospace; font-size: 13px; color: #fff; margin-bottom: 6px;">${m.name}</div>
-            <div style="font-size: 11px; color: var(--text-secondary);">Betweenness: ${m.betweenness} • Reach: ${m.reachable_descendants} modules</div>
-          </div>
-        `).join('');
-      } else {
-        bridgesContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No critical bridge bottlenecks detected.</div>';
-      }
-
-      // -------------------------------------------------------------
-      // 2. Onboarding Course ("Teach Me This Codebase")
-      // -------------------------------------------------------------
-      const onboardingData = data.onboarding || { steps: [] };
-      const stepsListEl = document.getElementById('onboard-steps-list');
-      const onboardBadgeEl = document.getElementById('onboard-total-steps-badge');
-      const onboardDetailEl = document.getElementById('onboard-detail-card');
-      
-      let currentStepIndex = 0;
-      let currentComplexity = 'beginner'; // 'beginner' | 'intermediate' | 'advanced'
-
-      onboardBadgeEl.textContent = `${onboardingData.steps.length} steps (${onboardingData.estimated_read_time_minutes || 10}m)`;
-
-      function renderOnboardingSidebar() {
-        stepsListEl.innerHTML = (onboardingData.steps || []).map((step, idx) => {
-          const isAct = idx === currentStepIndex;
-          return `
-            <div class="step-item-card ${isAct ? 'active' : ''}" onclick="window.selectOnboardingStep(${idx})">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="step-num-badge">STEP ${step.step_number}</span>
-                ${step.is_cycle_group ? '<span class="role-badge" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-rose);">🔄 Cycle</span>' : ''}
-              </div>
-              <div class="step-title-text">${step.concept || step.title}</div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      function renderOnboardingDetail() {
-        const step = onboardingData.steps[currentStepIndex];
-        if (!step) return;
-
-        let activeSummary = step.beginner_summary;
-        if (currentComplexity === 'intermediate') activeSummary = step.intermediate_summary;
-        if (currentComplexity === 'advanced') activeSummary = step.advanced_summary;
-
-        const cycleAlertHtml = step.is_cycle_group ? `
-          <div class="alert-card warning">
-            <strong>⚠️ Interdependent State Loop</strong>: These modules (${step.cycle_modules.join(', ')}) form a circular dependency loop. We study them together to avoid chicken-and-egg confusion.
-          </div>
-        ` : '';
-
-        const prereqsHtml = (step.prerequisites_covered || []).length > 0
-          ? step.prerequisites_covered.map(p => `<span class="pill-tag" style="color: var(--accent-green);">✓ ${p}</span>`).join(' ')
-          : '<span style="color: var(--text-muted); font-size: 12px;">None (Ground level)</span>';
-
-        const unlocksHtml = (step.next_unlocks || []).length > 0
-          ? step.next_unlocks.map(u => `<span class="pill-tag" style="color: var(--accent-blue);">➔ ${u}</span>`).join(' ')
-          : '<span style="color: var(--text-muted); font-size: 12px;">Final step</span>';
-
-        const modulesHtml = (step.target_modules || []).map(m => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-canvas); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;">
-            <span style="font-family: 'Fira Code', monospace; font-size: 12px;">📄 ${m}</span>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="window.selectModule('${m}')">Explore Code ➔</button>
-              <button class="btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="window.jumpToGraphNode('${m}')">Graph ➔</button>
-            </div>
-          </div>
-        `).join('');
-
-        const symbolsHtml = (step.key_symbols || []).map(s => `
-          <span class="pill-tag" style="font-size: 11px;">
-            ${s.type === 'class' ? '🏷️' : '⚡'} <strong>${s.name}</strong> <span style="opacity: 0.6;">(${s.module})</span>
-          </span>
-        `).join(' ');
-
-        onboardDetailEl.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-            <div>
-              <div style="font-size: 11px; font-family: 'Fira Code', monospace; color: var(--accent-blue); font-weight: 700; text-transform: uppercase;">
-                Step ${step.step_number} of ${onboardingData.steps.length} • ${step.component_name || 'Foundation'}
-              </div>
-              <h1 style="font-size: 22px; font-weight: 800; margin-top: 4px;">${step.title}</h1>
-            </div>
-            <div class="complexity-selector">
-              <button class="complexity-btn ${currentComplexity === 'beginner' ? 'active' : ''}" onclick="window.setComplexity('beginner')">Beginner</button>
-              <button class="complexity-btn ${currentComplexity === 'intermediate' ? 'active' : ''}" onclick="window.setComplexity('intermediate')">Intermediate</button>
-              <button class="complexity-btn ${currentComplexity === 'advanced' ? 'active' : ''}" onclick="window.setComplexity('advanced')">Advanced</button>
-            </div>
-          </div>
-
-          ${cycleAlertHtml}
-
-          <div style="background: var(--bg-card); border-left: 3px solid var(--accent-blue); padding: 16px 20px; border-radius: 6px; font-size: 14px; line-height: 1.7;">
-            ${activeSummary}
-          </div>
-
-          <div>
-            <div class="section-title">Why Now?</div>
-            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">${step.why_now}</div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-green); margin-bottom: 8px;">Prerequisites Covered</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 6px;">${prereqsHtml}</div>
-            </div>
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-blue); margin-bottom: 8px;">Next Unlocks</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 6px;">${unlocksHtml}</div>
-            </div>
-          </div>
-
-          <div>
-            <div class="section-title">Target Modules for this Step</div>
-            <div>${modulesHtml}</div>
-          </div>
-
-          ${symbolsHtml ? `
-            <div>
-              <div class="section-title">Key Core Symbols to Learn</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">${symbolsHtml}</div>
-            </div>
-          ` : ''}
-
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
-            <button class="btn-secondary" ${currentStepIndex === 0 ? 'disabled style="opacity: 0.4;"' : ''} onclick="window.prevOnboardingStep()">
-              ← Previous Step
-            </button>
-            <button class="btn-primary" ${currentStepIndex >= onboardingData.steps.length - 1 ? 'disabled style="opacity: 0.4;"' : ''} onclick="window.nextOnboardingStep()">
-              Next Step ➔
-            </button>
-          </div>
-        `;
-      }
-
-      window.selectOnboardingStep = function(idx) {
-        currentStepIndex = idx;
-        renderOnboardingSidebar();
-        renderOnboardingDetail();
-      };
-
-      window.setComplexity = function(comp) {
-        currentComplexity = comp;
-        renderOnboardingDetail();
-      };
-
-      window.prevOnboardingStep = function() {
-        if (currentStepIndex > 0) window.selectOnboardingStep(currentStepIndex - 1);
-      };
-
-      window.nextOnboardingStep = function() {
-        if (currentStepIndex < onboardingData.steps.length - 1) window.selectOnboardingStep(currentStepIndex + 1);
-      };
-
-      renderOnboardingSidebar();
-      renderOnboardingDetail();
-
-      // -------------------------------------------------------------
-      // 3. Architecture Tab
-      // -------------------------------------------------------------
-      const compGrid = document.getElementById('arch-components-grid');
-      compGrid.innerHTML = (data.components || []).map(c => {
-        const confPct = Math.round((c.confidence || 0) * 100);
-        const confClass = confPct >= 70 ? 'confidence-high' : (confPct >= 40 ? 'confidence-med' : 'confidence-low');
-        const sampleMods = (c.modules || []).slice(0, 3).map(m => m.split('/').pop()).join(', ');
-        const extra = c.modules.length > 3 ? ` (+${c.modules.length - 3} more)` : '';
-        return `
-          <div class="comp-card" onclick="window.inspectComponent('${c.id}')">
-            <div class="comp-card-header">
-              <span class="comp-name">📦 ${c.name}</span>
-              <span class="confidence-badge ${confClass}">${confPct}% confidence</span>
-            </div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
-              ${c.modules.length} module${c.modules.length === 1 ? '' : 's'} • ${(c.discovery_methods || []).join(', ')}
-            </div>
-            <div class="comp-modules-list">${sampleMods}${extra}</div>
-          </div>
-        `;
-      }).join('');
-
       const flowsContainer = document.getElementById('arch-flows-container');
-      if (data.flows && data.flows.length > 0) {
-        flowsContainer.innerHTML = data.flows.map(f => {
-          const pathHtml = f.path.map((step, idx) => `
-            <span class="flow-node-badge">${step}</span>
-            ${idx < f.path.length - 1 ? '<span class="flow-arrow">➔</span>' : ''}
-          `).join('');
-          return `
-            <div class="flow-row">
-              <div style="flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                ${pathHtml}
-              </div>
-            </div>
-          `;
-        }).join('');
+      if ((data.flows || []).length === 0) {
+        flowsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No multi-stage flows detected.</div>';
       } else {
-        flowsContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No cross-component flows recorded.</div>';
+        flowsContainer.innerHTML = (data.flows || []).map(f => `
+          <div class="flow-row">
+            <span class="badge" style="background: rgba(56, 189, 248, 0.1); color: var(--accent-blue);">${f.flow_type || 'FLOW'}</span>
+            ${f.path.map((step, idx) => `
+              <span class="flow-step">${step}</span>
+              ${idx < f.path.length - 1 ? '<span class="flow-arrow">➔</span>' : ''}
+            `).join('')}
+          </div>
+        `).join('');
       }
 
+      // Render DeepWiki Architecture View
+      renderDeepWikiView();
+
       // -------------------------------------------------------------
-      // 4. Code Explorer Tab (Sourcetrail Side-by-Side)
+      // 3. File Tree & Code Explorer
       // -------------------------------------------------------------
-      const fileTreePane = document.getElementById('code-file-tree');
-      fileTreePane.innerHTML = (data.modules || []).map(m => {
-        let roleBadgeColor = 'var(--text-muted)';
+      const treeContainer = document.getElementById('code-file-tree');
+      treeContainer.innerHTML = (data.modules || []).map(m => {
+        let roleBadgeColor = 'var(--role-module)';
         if (m.role === 'ENTRY_CANDIDATE') roleBadgeColor = 'var(--role-entry)';
         else if (m.role === 'HUB') roleBadgeColor = 'var(--role-hub)';
         else if (m.role === 'BRIDGE') roleBadgeColor = 'var(--role-bridge)';
@@ -1656,7 +1908,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
-          // Basic fast syntax highlight
           escaped = escaped.replace(/(#.*$)/g, '<span class="syntax-cmt">$1</span>');
           escaped = escaped.replace(/\\b(def)\\s+([a-zA-Z0-9_]+)/g, '<span class="syntax-kw">$1</span> <span class="syntax-fn">$2</span>');
           escaped = escaped.replace(/\\b(class)\\s+([a-zA-Z0-9_]+)/g, '<span class="syntax-kw">$1</span> <span class="syntax-cls">$2</span>');
@@ -1664,7 +1915,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           escaped = escaped.replace(/(".*?"|'.*?')/g, '<span class="syntax-str">$1</span>');
 
           return `
-            <tr>
+            <tr id="line-tr-${idx + 1}">
               <td class="code-line-num">${idx + 1}</td>
               <td class="code-line-text">${escaped}</td>
             </tr>
@@ -1672,26 +1923,160 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }).join('');
       }
 
-      window.selectModule = function(modId) {
-        switchTab('code');
+      window.jumpToCodeLine = function(lineNum) {
+        document.querySelectorAll('.code-line-highlight').forEach(el => el.classList.remove('code-line-highlight'));
+        const row = document.getElementById(`line-tr-${lineNum}`);
+        if (row) {
+          row.classList.add('code-line-highlight');
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+
+      // -------------------------------------------------------------
+      // 4. Code Dependency Tree Renderer
+      // -------------------------------------------------------------
+      function renderCodeDependencyTree(mod) {
+        const deptreeContent = document.getElementById('deptree-content');
+        const badgeEl = document.getElementById('deptree-stats-badge');
+
+        const inDeps = mod.inbound_dependents || [];
+        const outDeps = mod.outbound_dependencies || [];
+        const fns = mod.functions || [];
+        const classes = mod.classes || [];
+
+        badgeEl.textContent = `${inDeps.length} In / ${outDeps.length} Out`;
+
+        let html = '';
+
+        // Section 1: Inbound Dependents (Who calls/imports this file)
+        html += `
+          <div class="deptree-section">
+            <div class="deptree-section-title">
+              <span>📥 Inbound Dependents (${inDeps.length})</span>
+            </div>
+        `;
+        if (inDeps.length === 0) {
+          html += `<div style="color: var(--text-muted); font-size: 11px; padding-left: 8px;">No external modules import this file. (Root / Entry Candidate)</div>`;
+        } else {
+          inDeps.forEach(dep => {
+            const symList = (dep.symbols && dep.symbols.length > 0)
+              ? `Symbols: ${dep.symbols.join(', ')}`
+              : 'Direct module import';
+            
+            const callLinks = (dep.calls || []).slice(0, 4).map(c => `
+              <div class="deptree-call-item" onclick="event.stopPropagation(); window.selectModule('${dep.module}'); setTimeout(() => window.jumpToCodeLine(${c.line}), 150);">
+                ➔ line ${c.line}: <code>${c.scope}()</code> calls <strong>${c.symbol || 'import'}</strong>
+              </div>
+            `).join('');
+
+            html += `
+              <div class="deptree-node" onclick="window.selectModule('${dep.module}')">
+                <div class="deptree-node-top">
+                  <span>📄 ${dep.module}</span>
+                  <span style="color: var(--accent-blue); font-size: 10px;">Inspect ➔</span>
+                </div>
+                <div class="deptree-node-symbols">${symList}</div>
+                ${callLinks}
+              </div>
+            `;
+          });
+        }
+        html += `</div>`;
+
+        // Section 2: Outbound Dependencies (Who this file imports)
+        html += `
+          <div class="deptree-section">
+            <div class="deptree-section-title">
+              <span>📤 Outbound Dependencies (${outDeps.length})</span>
+            </div>
+        `;
+        if (outDeps.length === 0) {
+          html += `<div style="color: var(--text-muted); font-size: 11px; padding-left: 8px;">Zero internal imports. (Pure Leaf Utility)</div>`;
+        } else {
+          outDeps.forEach(dep => {
+            const symList = (dep.symbols && dep.symbols.length > 0)
+              ? `Uses: ${dep.symbols.join(', ')}`
+              : 'Direct module import';
+
+            html += `
+              <div class="deptree-node" onclick="window.selectModule('${dep.module}')">
+                <div class="deptree-node-top">
+                  <span>📄 ${dep.module}</span>
+                  <span style="color: var(--accent-cyan); font-size: 10px;">Inspect ➔</span>
+                </div>
+                <div class="deptree-node-symbols">${symList}</div>
+              </div>
+            `;
+          });
+        }
+        html += `</div>`;
+
+        // Section 3: Intra-file Symbols & Hierarchy
+        html += `
+          <div class="deptree-section">
+            <div class="deptree-section-title">
+              <span>⚡ Declared Symbols & Methods (${fns.length + classes.length})</span>
+            </div>
+        `;
+        if (classes.length > 0) {
+          classes.forEach(c => {
+            html += `
+              <div style="font-family: 'Fira Code', monospace; font-size: 11px; color: var(--accent-purple); padding: 4px 8px; background: rgba(192, 132, 252, 0.08); border-radius: 4px; margin-bottom: 4px;">
+                🏛️ class <strong>${c.name}</strong>
+                ${(c.methods || []).map(m => `
+                  <div style="padding-left: 14px; color: var(--text-secondary); font-size: 10px;">
+                    • def ${m.name}${m.signature || '()'}
+                  </div>
+                `).join('')}
+              </div>
+            `;
+          });
+        }
+        if (fns.length > 0) {
+          fns.forEach(f => {
+            html += `
+              <div style="font-family: 'Fira Code', monospace; font-size: 11px; color: var(--accent-blue); padding: 4px 8px; background: rgba(56, 189, 248, 0.05); border-radius: 4px; margin-bottom: 2px;">
+                ⚡ def <strong>${f.name}</strong>${f.signature || '()'}
+              </div>
+            `;
+          });
+        }
+        if (classes.length === 0 && fns.length === 0) {
+          html += `<div style="color: var(--text-muted); font-size: 11px; padding-left: 8px;">No top-level functions or classes declared.</div>`;
+        }
+        html += `</div>`;
+
+        deptreeContent.innerHTML = html;
+      }
+
+      window.selectModule = function(modId, shouldSwitchTab = true) {
+        if (shouldSwitchTab) {
+          switchTab('code');
+        }
         const mod = (data.modules || []).find(m => m.id === modId);
         if (!mod) return;
 
         // Tree active highlight
         document.querySelectorAll('.file-tree-item').forEach(el => el.classList.remove('active'));
         const activeTreeEl = document.getElementById(`tree-item-${modId.replace(/[^a-zA-Z0-9]/g, '_')}`);
-        if (activeTreeEl) activeTreeEl.classList.add('active');
+        if (activeTreeEl) {
+          activeTreeEl.classList.add('active');
+          activeTreeEl.scrollIntoView({ block: 'nearest' });
+        }
 
         document.getElementById('code-file-path').textContent = `${mod.path} (${mod.line_count} LOC • ${mod.role})`;
         document.getElementById('code-header-actions').innerHTML = `
           <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="window.jumpToGraphNode('${mod.id}')">View in Graph ➔</button>
         `;
 
+        // Render middle pane: Code Dependency Tree
+        renderCodeDependencyTree(mod);
+
+        // Render right pane: Syntax Highlighted Code
         const codeContentEl = document.getElementById('code-viewer-content');
         if (mod.source_code) {
           codeContentEl.innerHTML = `<table class="code-table">${highlightPythonSyntax(mod.source_code)}</table>`;
         } else {
-          // Fallback summary if source code not cached
           codeContentEl.innerHTML = `
             <div style="padding: 20px;">
               <h3 style="color: #fff; margin-bottom: 12px;">Module Inspection: ${mod.path}</h3>
@@ -1700,24 +2085,30 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <div class="stat-card"><div class="stat-val">${mod.function_count}</div><div class="stat-lbl">Functions</div></div>
                 <div class="stat-card"><div class="stat-val">${mod.class_count}</div><div class="stat-lbl">Classes</div></div>
               </div>
-              <div class="section-title">Functions & Signatures</div>
-              <div style="font-family: 'Fira Code', monospace; line-height: 2;">
-                ${(mod.functions || []).map(f => `<div>⚡ <span style="color: var(--accent-green);">def</span> <strong>${f.name}</strong>${f.signature || '()'}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
-              </div>
             </div>
           `;
         }
       };
 
       // -------------------------------------------------------------
-      // 5. Graph Explorer with Unrelated Node Greying
+      // 5. Graph Explorer: Modules & Architecture Graph (vis.Network)
       // -------------------------------------------------------------
       let network = null;
-      let currentLevel = 'architecture';
-      let unfoldedComponents = new Set();
+      let currentLevel = 'modules';
+      let activeRoleFilter = 'ALL';
       let selectedNodeId = null;
 
-      const container = document.getElementById('network-canvas');
+      const networkContainer = document.getElementById('network-canvas');
+      const roleFilterGroup = document.getElementById('role-filter-group');
+
+      function getNodeBorderColor(role) {
+        if (role === 'BRIDGE') return '#f59e0b';
+        if (role === 'HUB') return '#c084fc';
+        if (role === 'LEAF') return '#10b981';
+        if (role === 'CYCLE_MEMBER') return '#f43f5e';
+        if (role === 'ENTRY_CANDIDATE') return '#22d3ee';
+        return '#38bdf8';
+      }
 
       function buildGraphDataSet(level) {
         const nodes = [];
@@ -1726,96 +2117,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const filterImports = document.getElementById('chk-filter-imports').checked;
         const filterRefs = document.getElementById('chk-filter-refs').checked;
 
-        if (level === 'architecture') {
-          (data.components || []).forEach(c => {
-            const isUnfolded = unfoldedComponents.has(c.id);
-            if (!isUnfolded) {
-              nodes.push({
-                id: `comp:${c.id}`,
-                label: `${c.name}\\n(${c.modules.length} modules)`,
-                shape: 'box',
-                color: {
-                  background: '#152037',
-                  border: '#38bdf8',
-                  highlight: { background: '#1d4ed8', border: '#60a5fa' }
-                },
-                font: { color: '#f8fafc', face: 'Inter', size: 14, bold: true },
-                margin: 12,
-                borderWidth: 2,
-              });
-            } else {
-              (c.modules || []).forEach(mId => {
-                const mod = (data.modules || []).find(m => m.id === mId);
-                const role = mod ? mod.role : 'MODULE';
-                let bColor = '#38bdf8';
-                if (role === 'BRIDGE') bColor = '#f59e0b';
-                else if (role === 'HUB') bColor = '#c084fc';
-                else if (role === 'LEAF') bColor = '#10b981';
-
-                nodes.push({
-                  id: `mod:${mId}`,
-                  label: mId.split('/').pop(),
-                  shape: 'box',
-                  color: {
-                    background: '#090d16',
-                    border: bColor,
-                    highlight: { background: '#1e293b', border: '#fff' }
-                  },
-                  font: { color: '#e2e8f0', face: 'Fira Code', size: 11 },
-                  margin: 8,
-                  borderWidth: 1.5,
-                });
-              });
-            }
-          });
-
-          (data.component_edges || []).forEach(e => {
-            const srcUnfolded = unfoldedComponents.has(e.source);
-            const tgtUnfolded = unfoldedComponents.has(e.target);
-            if (!srcUnfolded && !tgtUnfolded) {
-              edges.push({
-                from: `comp:${e.source}`,
-                to: `comp:${e.target}`,
-                arrows: 'to',
-                color: { color: 'rgba(56, 189, 248, 0.4)', highlight: '#38bdf8' },
-                width: Math.min(6, Math.max(1, Math.log2((e.weight || 1) + 1))),
-              });
-            }
-          });
-
-          if (unfoldedComponents.size > 0) {
-            (data.module_edges || []).forEach(e => {
-              edges.push({
-                from: `mod:${e.source}`,
-                to: `mod:${e.target}`,
-                arrows: 'to',
-                color: { color: 'rgba(148, 163, 184, 0.3)', highlight: '#38bdf8' },
-                width: 1,
-              });
-            });
-          }
-
-        } else if (level === 'modules') {
+        if (level === 'modules') {
           (data.modules || []).forEach(m => {
-            let bColor = '#38bdf8';
-            if (m.role === 'BRIDGE') bColor = '#f59e0b';
-            else if (m.role === 'HUB') bColor = '#c084fc';
-            else if (m.role === 'LEAF') bColor = '#10b981';
-            else if (m.role === 'CYCLE_MEMBER') bColor = '#f43f5e';
-            else if (m.role === 'ENTRY_CANDIDATE') bColor = '#22d3ee';
+            const isMatch = (activeRoleFilter === 'ALL' || m.role === activeRoleFilter);
+            const bColor = getNodeBorderColor(m.role);
 
             nodes.push({
               id: `mod:${m.id}`,
               label: m.path.split('/').pop(),
+              role: m.role,
               shape: 'box',
-              color: {
+              color: isMatch ? {
                 background: '#0f172a',
                 border: bColor,
                 highlight: { background: '#1e293b', border: '#fff' }
+              } : {
+                background: '#070c18',
+                border: 'rgba(51, 65, 85, 0.25)',
+                highlight: { background: '#0f172a', border: '#64748b' }
               },
-              font: { color: '#f8fafc', face: 'Fira Code', size: 12 },
+              opacity: isMatch ? 1.0 : 0.14,
+              font: {
+                color: isMatch ? '#f8fafc' : 'rgba(100, 116, 139, 0.3)',
+                face: 'Fira Code',
+                size: 12
+              },
               margin: 8,
-              borderWidth: 1.5,
+              borderWidth: isMatch ? 1.8 : 1,
             });
           });
 
@@ -1826,72 +2154,90 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const isRef = Boolean(types.REFERENCE);
 
             if ((isCall && filterCalls) || (isImport && filterImports) || (isRef && filterRefs) || (!isCall && !isImport && !isRef)) {
+              const srcMod = (data.modules || []).find(m => m.id === e.source);
+              const tgtMod = (data.modules || []).find(m => m.id === e.target);
+              const edgeActive = (activeRoleFilter === 'ALL' || (srcMod && srcMod.role === activeRoleFilter) || (tgtMod && tgtMod.role === activeRoleFilter));
+
               edges.push({
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
                 arrows: 'to',
-                color: { color: 'rgba(56, 189, 248, 0.35)', highlight: '#38bdf8' },
-                width: Math.min(5, Math.max(1, e.weight || 1)),
+                color: {
+                  color: edgeActive ? 'rgba(56, 189, 248, 0.4)' : 'rgba(51, 65, 85, 0.08)',
+                  highlight: '#38bdf8'
+                },
+                width: edgeActive ? Math.min(5, Math.max(1, e.weight || 1)) : 1,
               });
             }
           });
 
-        } else if (level === 'symbols') {
-          const symbolNodesSet = new Set();
-          const symbolEdges = [];
-
-          (data.cross_references || []).slice(0, 100).forEach(xr => {
-            const srcNodeId = `sym:${xr.source_file}:${xr.scope || 'caller'}`;
-            const tgtNodeId = `sym:${xr.target_file}:${xr.symbol}`;
-
-            if (!symbolNodesSet.has(srcNodeId)) {
-              symbolNodesSet.add(srcNodeId);
-              nodes.push({
-                id: srcNodeId,
-                label: `${xr.source_file.split('/').pop()}\\n${xr.scope || 'call'}()`,
-                shape: 'ellipse',
-                color: { background: '#152037', border: '#38bdf8' },
-                font: { color: '#e2e8f0', size: 10 },
-              });
-            }
-            if (!symbolNodesSet.has(tgtNodeId)) {
-              symbolNodesSet.add(tgtNodeId);
-              nodes.push({
-                id: tgtNodeId,
-                label: `${xr.target_file.split('/').pop()}\\n⚡ ${xr.symbol}`,
-                shape: 'box',
-                color: { background: '#090d16', border: '#10b981' },
-                font: { color: '#10b981', face: 'Fira Code', size: 10 },
-              });
-            }
-
-            symbolEdges.push({
-              from: srcNodeId,
-              to: tgtNodeId,
-              arrows: 'to',
-              color: { color: 'rgba(16, 185, 129, 0.4)' },
+        } else if (level === 'architecture') {
+          // Architecture Graph on vis.Network (same way as modules!)
+          (data.components || []).forEach(c => {
+            const modCount = (c.modules || []).length;
+            nodes.push({
+              id: `comp:${c.id}`,
+              label: `🏛️ ${c.name}\n${modCount} module${modCount === 1 ? '' : 's'}`,
+              shape: 'box',
+              color: {
+                background: '#0f172a',
+                border: '#38bdf8',
+                highlight: { background: '#1e293b', border: '#fff' }
+              },
+              font: {
+                color: '#f8fafc',
+                face: 'Fira Code',
+                size: 13,
+                bold: true
+              },
+              margin: 14,
+              borderWidth: 2,
+              shadow: {
+                enabled: true,
+                color: 'rgba(56, 189, 248, 0.25)',
+                size: 10,
+                x: 0,
+                y: 2
+              }
             });
           });
 
-          edges.push(...symbolEdges);
+          (data.component_edges || []).forEach(e => {
+            edges.push({
+              from: `comp:${e.source}`,
+              to: `comp:${e.target}`,
+              arrows: 'to',
+              label: e.weight > 1 ? `${e.weight} calls` : '',
+              font: { color: '#94a3b8', size: 10, face: 'Fira Code' },
+              color: {
+                color: 'rgba(56, 189, 248, 0.45)',
+                highlight: '#38bdf8'
+              },
+              width: Math.min(6, Math.max(1.5, Math.log2(e.weight + 1) * 2)),
+              smooth: { type: 'cubicBezier', roundness: 0.2 }
+            });
+          });
         }
 
         return { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
       }
 
       function initOrFitNetwork() {
+        networkContainer.style.display = 'block';
+        roleFilterGroup.style.display = (currentLevel === 'modules') ? 'flex' : 'none';
+
         if (!network) {
           const graphData = buildGraphDataSet(currentLevel);
           const options = {
             physics: {
               solver: 'forceAtlas2Based',
               forceAtlas2Based: {
-                gravitationalConstant: -38,
+                gravitationalConstant: -42,
                 centralGravity: 0.01,
-                springLength: 90,
+                springLength: 100,
                 springConstant: 0.08,
               },
-              stabilization: { iterations: 120 },
+              stabilization: { iterations: 100 },
             },
             interaction: {
               hover: true,
@@ -1900,9 +2246,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               dragView: true,
             },
           };
-          network = new vis.Network(container, graphData, options);
+          network = new vis.Network(networkContainer, graphData, options);
+          setTimeout(() => {
+            if (network) {
+              network.setSize('100%', '100%');
+              network.redraw();
+              network.fit();
+            }
+          }, 80);
 
-          // Progressive Greying: When node is selected, dim unrelated nodes!
+          // Click: Unrelated node greying
           network.on('click', function(params) {
             if (params.nodes.length > 0) {
               const clickedId = params.nodes[0];
@@ -1911,28 +2264,58 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               onCanvasNodeSelected(clickedId);
             } else {
               selectedNodeId = null;
-              resetNodeOpacities();
-            }
-          });
-
-          network.on('doubleClick', function(params) {
-            if (params.nodes.length > 0) {
-              const nodeId = params.nodes[0];
-              if (nodeId.startsWith('comp:')) {
-                const compId = nodeId.replace('comp:', '');
-                if (unfoldedComponents.has(compId)) {
-                  unfoldedComponents.delete(compId);
-                } else {
-                  unfoldedComponents.add(compId);
-                }
+              if (currentLevel === 'modules') {
+                applyRoleFilter(activeRoleFilter);
+              } else {
                 updateNetworkData();
               }
             }
           });
+
+          // Double Click: Jump to source tree or inspect component!
+          network.on('doubleClick', function(params) {
+            if (params.nodes.length > 0) {
+              const clickedId = params.nodes[0];
+              if (clickedId.startsWith('mod:')) {
+                const modId = clickedId.replace('mod:', '');
+                window.selectModule(modId);
+              } else if (clickedId.startsWith('comp:')) {
+                const compId = clickedId.replace('comp:', '');
+                const comp = (data.components || []).find(c => c.id === compId);
+                if (comp && comp.modules && comp.modules.length > 0) {
+                  window.selectModule(comp.modules[0]);
+                }
+              }
+            }
+          });
         } else {
-          network.fit({ animation: { duration: 400 } });
+          updateNetworkData();
+          network.setSize('100%', '100%');
+          network.redraw();
+          network.fit({ animation: { duration: 300 } });
         }
       }
+
+      function updateNetworkData() {
+        if (!network) return;
+        const gd = buildGraphDataSet(currentLevel);
+        network.setData(gd);
+      }
+
+      // Role filter with dynamic greying out
+      function applyRoleFilter(role) {
+        activeRoleFilter = role;
+        document.querySelectorAll('#role-filter-group .role-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.role === role);
+        });
+        updateNetworkData();
+      }
+
+      document.querySelectorAll('#role-filter-group .role-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          applyRoleFilter(this.dataset.role);
+        });
+      });
 
       function applyUnrelatedNodeGreying(focusNodeId) {
         if (!network) return;
@@ -1944,25 +2327,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           if (connectedNodes.has(n.id)) {
             return { id: n.id, opacity: 1.0 };
           } else {
-            return { id: n.id, opacity: 0.12 }; // Dimmed to eliminate noise!
+            return { id: n.id, opacity: 0.12 };
           }
         });
         network.body.data.nodes.update(updates);
-      }
-
-      function resetNodeOpacities() {
-        if (!network) return;
-        const allNodes = network.body.data.nodes.get();
-        const updates = allNodes.map(n => ({ id: n.id, opacity: 1.0 }));
-        network.body.data.nodes.update(updates);
-      }
-
-      function updateNetworkData() {
-        if (network) {
-          const graphData = buildGraphDataSet(currentLevel);
-          network.setData(graphData);
-          if (selectedNodeId) applyUnrelatedNodeGreying(selectedNodeId);
-        }
       }
 
       function onCanvasNodeSelected(nodeId) {
@@ -1970,29 +2338,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const inspSub = document.getElementById('insp-sub');
         const inspBody = document.getElementById('insp-body');
 
-        if (nodeId.startsWith('comp:')) {
-          const cId = nodeId.replace('comp:', '');
-          const comp = (data.components || []).find(c => c.id === cId);
-          if (!comp) return;
-
-          inspTitle.textContent = `📦 ${comp.name}`;
-          inspSub.textContent = `Architectural Component • ${comp.modules.length} member modules`;
-          const isUnfolded = unfoldedComponents.has(cId);
-
-          inspBody.innerHTML = `
-            <div class="inspector-prop"><span class="lbl">Confidence</span><span class="val">${Math.round(comp.confidence * 100)}%</span></div>
-            <div class="inspector-prop"><span class="lbl">Discovery</span><span class="val">${(comp.discovery_methods || []).join(', ')}</span></div>
-            <div style="margin-top: 16px;">
-              <button class="btn-primary" style="width: 100%; justify-content: center; margin-bottom: 8px;" onclick="window.toggleUnfold('${cId}')">
-                ${isUnfolded ? 'Fold Component' : 'Unfold into Modules ➔'}
-              </button>
-            </div>
-            <div style="margin-top: 14px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Member Modules:</div>
-            <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8; color: var(--text-secondary); margin-top: 6px;">
-              ${comp.modules.map(m => `<div>• ${m}</div>`).join('')}
-            </div>
-          `;
-        } else if (nodeId.startsWith('mod:')) {
+        if (nodeId.startsWith('mod:')) {
           const mId = nodeId.replace('mod:', '');
           const mod = (data.modules || []).find(m => m.id === mId);
           if (!mod) return;
@@ -2002,42 +2348,82 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           inspBody.innerHTML = `
             <div class="inspector-prop"><span class="lbl">Component</span><span class="val">${mod.component_name}</span></div>
             <div class="inspector-prop"><span class="lbl">Role</span><span class="val">${mod.role}</span></div>
-            <div class="inspector-prop"><span class="lbl">LOC</span><span class="val">${mod.line_count}</span></div>
-            <div class="inspector-prop"><span class="lbl">In / Out Degree</span><span class="val">${mod.in_degree} / ${mod.out_degree}</span></div>
-            <div class="inspector-prop"><span class="lbl">Betweenness</span><span class="val">${mod.betweenness}</span></div>
+            <div class="inspector-prop"><span class="lbl">Lines</span><span class="val">${mod.line_count}</span></div>
+            <div class="inspector-prop"><span class="lbl">Inbound / Outbound</span><span class="val">${(mod.inbound_dependents || []).length} / ${(mod.outbound_dependencies || []).length}</span></div>
             <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
               <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="window.selectModule('${mId}')">Explore Source Code ➔</button>
-              <button class="btn-secondary" style="width: 100%; justify-content: center;" onclick="window.inspectDeepWikiModule('${mId}')">DeepWiki Explanation ➔</button>
+            </div>
+          `;
+        } else if (nodeId.startsWith('comp:')) {
+          const cId = nodeId.replace('comp:', '');
+          const comp = (data.components || []).find(c => c.id === cId);
+          if (!comp) return;
+
+          inspTitle.textContent = `🏛️ ${comp.name}`;
+          inspSub.textContent = `Architectural Subsystem • ${(comp.modules || []).length} Modules`;
+
+          let modHtml = (comp.modules || []).map(m => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid rgba(51,65,85,0.2);">
+              <span style="font-family:'Fira Code'; font-size:11px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${m.split('/').pop()}</span>
+              <button class="btn-secondary" style="padding:2px 6px; font-size:10px;" onclick="window.selectModule('${m}')">Code ➔</button>
+            </div>
+          `).join('');
+
+          inspBody.innerHTML = `
+            <div class="inspector-prop"><span class="lbl">Subsystem ID</span><span class="val">${comp.id}</span></div>
+            <div class="inspector-prop"><span class="lbl">Confidence</span><span class="val">${Math.round((comp.confidence || 0.9) * 100)}%</span></div>
+            <div class="inspector-prop"><span class="lbl">Discovery</span><span class="val">${(comp.evidence || []).join(', ') || 'DeepWiki'}</span></div>
+            <div style="margin-top:14px; margin-bottom:6px; font-size:11px; font-weight:700; color:var(--accent-blue); text-transform:uppercase;">Constituent Modules (${(comp.modules || []).length})</div>
+            <div style="max-height:160px; overflow-y:auto; margin-bottom:14px; padding-right:4px;">${modHtml || '<div style="color:var(--text-muted); font-size:11px;">None</div>'}</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <button class="btn-primary" style="width:100%; justify-content:center;" onclick="window.filterModulesToComponent('${comp.id}')">Filter Module Graph ➔</button>
             </div>
           `;
         }
       }
 
-      window.toggleUnfold = function(compId) {
-        if (unfoldedComponents.has(compId)) {
-          unfoldedComponents.delete(compId);
-        } else {
-          unfoldedComponents.add(compId);
-        }
+      window.filterModulesToComponent = function(compId) {
+        currentLevel = 'modules';
+        document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.toggle('active', p.dataset.level === 'modules'));
+        roleFilterGroup.style.display = 'flex';
         updateNetworkData();
-        onCanvasNodeSelected(`comp:${compId}`);
+        const comp = (data.components || []).find(c => c.id === compId);
+        if (comp && comp.modules && comp.modules.length > 0) {
+          setTimeout(() => {
+            if (network) {
+              const nodeIds = comp.modules.map(m => `mod:${m}`);
+              network.fit({ nodes: nodeIds, animation: { duration: 300 } });
+            }
+          }, 100);
+        }
       };
 
-      window.inspectComponent = function(compId) {
-        switchTab('graph');
-        unfoldedComponents.add(compId);
-        updateNetworkData();
-        setTimeout(() => onCanvasNodeSelected(`comp:${compId}`), 100);
-      };
+      // Graph Explorer Level Switcher
+      document.querySelectorAll('#graph-level-pills .pill-opt').forEach(pill => {
+        pill.addEventListener('click', function() {
+          document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.remove('active'));
+          this.classList.add('active');
+          currentLevel = this.dataset.level;
+          initOrFitNetwork();
+        });
+      });
+
+      // Checkbox edge filters
+      ['chk-filter-calls', 'chk-filter-imports', 'chk-filter-refs'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+          updateNetworkData();
+        });
+      });
 
       window.jumpToGraphNode = function(modId) {
         switchTab('graph');
         currentLevel = 'modules';
         document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.toggle('active', p.dataset.level === 'modules'));
-        updateNetworkData();
+        roleFilterGroup.style.display = 'flex';
+        initOrFitNetwork();
         setTimeout(() => {
           if (network) {
-            network.focus(`mod:${modId}`, { scale: 1.2, animation: { duration: 500 } });
+            network.focus(`mod:${modId}`, { scale: 1.2, animation: { duration: 400 } });
             network.selectNodes([`mod:${modId}`]);
             applyUnrelatedNodeGreying(`mod:${modId}`);
             onCanvasNodeSelected(`mod:${modId}`);
@@ -2045,254 +2431,359 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }, 200);
       };
 
-      document.getElementById('btn-fold-all').addEventListener('click', () => {
-        unfoldedComponents.clear();
-        updateNetworkData();
-      });
-
-      document.querySelectorAll('#graph-level-pills .pill-opt').forEach(pill => {
-        pill.addEventListener('click', function() {
-          document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.remove('active'));
-          this.classList.add('active');
-          currentLevel = this.dataset.level;
-          updateNetworkData();
-        });
-      });
-
-      ['chk-filter-calls', 'chk-filter-imports', 'chk-filter-refs'].forEach(id => {
-        document.getElementById(id).addEventListener('change', updateNetworkData);
-      });
-
-      // -------------------------------------------------------------
-      // 6. DeepWiki Docs Tab (Levels 1 to 5)
-      // -------------------------------------------------------------
-      const deepWiki = data.deepwiki || {};
-      const docsContainer = document.getElementById('docs-level-content');
-      let currentDocLevel = 'repo'; // 'repo' | 'arch' | 'modules' | 'rel'
-
-      function renderMarkdown(md) {
-        if (!md) return '';
-        return md
-          .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-          .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-          .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-          .replace(/\\*\\*(.*?)\\*\\*/gim, '<strong>$1</strong>')
-          .replace(/\\*(.*?)\\*/gim, '<em>$1</em>')
-          .replace(/`([^`]+)`/gim, '<code>$1</code>')
-          .replace(/^\\- (.*$)/gim, '<ul><li>$1</li></ul>')
-          .replace(/<\\/ul>\\s*<ul>/gim, '')
-          .replace(/\\n\\n/gim, '<br>');
-      }
-
-      function renderDeepWikiView() {
-        if (currentDocLevel === 'repo') {
-          docsContainer.innerHTML = renderMarkdown(deepWiki.repository || data.documentation_md);
-        } else if (currentDocLevel === 'arch') {
-          docsContainer.innerHTML = renderMarkdown(deepWiki.architecture || '# Architecture Subsystems');
-        } else if (currentDocLevel === 'modules') {
-          const modDocs = deepWiki.modules || {};
-          const modOptions = Object.keys(modDocs).map(m => `<option value="${m}">${m}</option>`).join('');
-          docsContainer.innerHTML = `
-            <h2>3. Module Encyclopedia</h2>
-            <p>Select any module to inspect its architectural purpose, inbound dependents, and exported contracts:</p>
-            <select id="deepwiki-mod-select" style="background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; font-family: 'Fira Code', monospace; width: 100%; margin-bottom: 20px;">
-              ${modOptions}
-            </select>
-            <div id="deepwiki-mod-content"></div>
-          `;
-          const selectEl = document.getElementById('deepwiki-mod-select');
-          selectEl.addEventListener('change', (e) => renderModuleDoc(e.target.value));
-          if (Object.keys(modDocs).length > 0) renderModuleDoc(Object.keys(modDocs)[0]);
-        } else if (currentDocLevel === 'rel') {
-          const mods = (data.modules || []).map(m => m.id);
-          docsContainer.innerHTML = `
-            <h2>5. Relationship Inspector ("Why does A depend on B?")</h2>
-            <p>Inspect why any module depends on another, what symbols are imported, and what architectural contract is fulfilled:</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-              <div>
-                <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">SOURCE MODULE</label>
-                <select id="rel-src-select" style="width: 100%; background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px; border-radius: 6px; font-family: 'Fira Code', monospace; margin-top: 4px;">
-                  ${mods.map(m => `<option value="${m}">${m}</option>`).join('')}
-                </select>
-              </div>
-              <div>
-                <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">TARGET MODULE</label>
-                <select id="rel-tgt-select" style="width: 100%; background: var(--bg-card); color: #fff; border: 1px solid var(--border); padding: 8px; border-radius: 6px; font-family: 'Fira Code', monospace; margin-top: 4px;">
-                  ${mods.map(m => `<option value="${m}">${m}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-            <div id="rel-explanation-output" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px;"></div>
-          `;
-          document.getElementById('rel-src-select').addEventListener('change', updateRelExplanation);
-          document.getElementById('rel-tgt-select').addEventListener('change', updateRelExplanation);
-          updateRelExplanation();
-        }
-      }
-
-      function renderModuleDoc(modId) {
-        const modDoc = (deepWiki.modules || {})[modId];
-        const out = document.getElementById('deepwiki-mod-content');
-        if (!modDoc || !out) return;
-        out.innerHTML = `
-          <div class="stat-card" style="margin-bottom: 20px;">
-            <h3 style="font-family: 'Fira Code', monospace; color: var(--accent-blue);">${modDoc.path}</h3>
-            <div style="margin-top: 6px; font-size: 14px;">${modDoc.purpose}</div>
-            <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">${modDoc.role_description}</div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-blue); margin-bottom: 6px;">Incoming Dependents (${(modDoc.incoming_dependents || []).length})</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8;">
-                ${(modDoc.incoming_dependents || []).map(m => `<div>← ${m}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
-              </div>
-            </div>
-            <div class="stat-card">
-              <div style="font-size: 12px; font-weight: 700; color: var(--accent-green); margin-bottom: 6px;">Outgoing Dependencies (${(modDoc.outgoing_dependencies || []).length})</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px; line-height: 1.8;">
-                ${(modDoc.outgoing_dependencies || []).map(m => `<div>→ ${m}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      function updateRelExplanation() {
-        const src = document.getElementById('rel-src-select').value;
-        const tgt = document.getElementById('rel-tgt-select').value;
-        const out = document.getElementById('rel-explanation-output');
-        if (!out) return;
-
-        // Check if edge exists
-        const edge = (data.module_edges || []).find(e => e.source === src && e.target === tgt);
-        if (edge) {
-          out.innerHTML = `
-            <div style="font-size: 14px; font-weight: 700; color: var(--accent-green); margin-bottom: 8px;">
-              ✔ Verified Direct Architectural Dependency
-            </div>
-            <div style="font-size: 13px; line-height: 1.6; margin-bottom: 12px;">
-              <code>${src}</code> imports and depends on <code>${tgt}</code> (weight: ${edge.weight}).
-            </div>
-            ${edge.symbol_edges && edge.symbol_edges.length > 0 ? `
-              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">Imported & Called Symbols:</div>
-              <div style="font-family: 'Fira Code', monospace; font-size: 11px;">
-                ${edge.symbol_edges.map(s => `<div>• ${s.source_symbol || s.symbol || s} ➔ ${s.target_symbol || s.symbol || s}</div>`).join('')}
-              </div>
-            ` : ''}
-          `;
-        } else {
-          out.innerHTML = `
-            <div style="font-size: 13px; color: var(--text-muted);">
-              No direct dependency edge from <code>${src}</code> to <code>${tgt}</code> detected.
-            </div>
-          `;
-        }
-      }
-
-      window.inspectDeepWikiModule = function(modId) {
-        switchTab('docs');
-        currentDocLevel = 'modules';
-        document.querySelectorAll('.docs-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.doclevel === 'modules'));
-        renderDeepWikiView();
+      window.inspectComponent = function(compId) {
+        switchTab('graph');
+        currentLevel = 'architecture';
+        document.querySelectorAll('#graph-level-pills .pill-opt').forEach(p => p.classList.toggle('active', p.dataset.level === 'architecture'));
+        initOrFitNetwork();
         setTimeout(() => {
-          const sel = document.getElementById('deepwiki-mod-select');
-          if (sel) {
-            sel.value = modId;
-            renderModuleDoc(modId);
+          if (network) {
+            const nodeId = `comp:${compId}`;
+            network.focus(nodeId, { scale: 1.2, animation: { duration: 400 } });
+            network.selectNodes([nodeId]);
+            applyUnrelatedNodeGreying(nodeId);
+            onCanvasNodeSelected(nodeId);
           }
-        }, 50);
+        }, 200);
       };
 
-      document.querySelectorAll('.docs-tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-          document.querySelectorAll('.docs-tab-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          currentDocLevel = this.dataset.doclevel;
-          renderDeepWikiView();
+      // -------------------------------------------------------------
+      // DeepWiki Architecture Wiki Viewer & Provider Config
+      // -------------------------------------------------------------
+      function renderDeepWikiView() {
+        const currentModelEl = document.getElementById('deepwiki-current-model');
+        const providerName = data.ai_provider || 'Gemini';
+        const modelName = data.ai_model || 'gemini-2.5-flash';
+        if (currentModelEl) {
+          currentModelEl.textContent = `AI Provider: ${providerName.toUpperCase()} (${modelName})`;
+        }
+
+        const navTreeEl = document.getElementById('deepwiki-nav-tree');
+        const pageViewEl = document.getElementById('deepwiki-page-view');
+        const structure = data.wiki_structure || null;
+        const pages = data.wiki_pages || {};
+
+        if (!structure || !structure.pages || structure.pages.length === 0) {
+          if (pageViewEl) {
+            pageViewEl.innerHTML = renderMarkdown(data.documentation_md || '# Architecture Documentation');
+          }
+          if (navTreeEl) {
+            navTreeEl.innerHTML = '<div style="padding:10px; color:var(--text-muted); font-size:12px;">Architecture Guide</div>';
+          }
+          return;
+        }
+
+        let navHtml = '';
+        const sections = structure.sections || [];
+        const renderedPageIds = new Set();
+
+        sections.forEach(sec => {
+          navHtml += `<div class="deepwiki-nav-section-title">${sec.title}</div>`;
+          (sec.pages || []).forEach(pid => {
+            renderedPageIds.add(pid);
+            const page = pages[pid] || structure.pages.find(p => p.id === pid);
+            if (page) {
+              navHtml += `
+                <div class="deepwiki-nav-item" data-page-id="${page.id}" id="nav-item-${page.id}">
+                  <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${page.title}</span>
+                  ${page.importance === 'high' ? '<span class="deepwiki-pill-high">Core</span>' : ''}
+                </div>
+              `;
+            }
+          });
         });
+
+        (structure.pages || []).forEach(page => {
+          if (!renderedPageIds.has(page.id)) {
+            navHtml += `
+              <div class="deepwiki-nav-item" data-page-id="${page.id}" id="nav-item-${page.id}">
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${page.title}</span>
+              </div>
+            `;
+          }
+        });
+
+        navTreeEl.innerHTML = navHtml;
+
+        window.selectDeepWikiPage = function(pageId) {
+          document.querySelectorAll('.deepwiki-nav-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.pageId === pageId);
+          });
+          const page = pages[pageId] || structure.pages.find(p => p.id === pageId);
+          if (page) {
+            pageViewEl.innerHTML = renderMarkdown(page.content || `# ${page.title}\n*(Content empty)*`);
+            pageViewEl.scrollTop = 0;
+          }
+        };
+
+        document.querySelectorAll('.deepwiki-nav-item').forEach(item => {
+          item.addEventListener('click', function() {
+            window.selectDeepWikiPage(this.dataset.pageId);
+          });
+        });
+
+        if (structure.pages.length > 0) {
+          window.selectDeepWikiPage(structure.pages[0].id);
+        }
+      }
+
+      // Handle interactive code citation jumps: #code:path:line
+      document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (link && link.getAttribute('href')) {
+          const href = link.getAttribute('href');
+          if (href.startsWith('#code:')) {
+            e.preventDefault();
+            const rest = href.replace('#code:', '');
+            const parts = rest.split(':');
+            const path = parts[0];
+            const lineRange = parts[1] || '';
+            const startLine = parseInt(lineRange.split('-')[0], 10);
+
+            // Switch to Code tab
+            switchTab('code');
+
+            const matchedMod = (data.modules || []).find(m => m.path === path || m.path.endsWith(path) || path.endsWith(m.path));
+            if (matchedMod) {
+              window.selectModule(matchedMod.id);
+              if (!isNaN(startLine)) {
+                setTimeout(() => window.jumpToCodeLine(startLine), 180);
+              }
+            }
+          }
+        }
       });
 
-      renderDeepWikiView();
+      // Provider Config Modal Controls
+      const providerModal = document.getElementById('provider-modal');
+      const btnOpenModal = document.getElementById('btn-open-provider-modal');
+      const btnCloseModal = document.getElementById('btn-close-modal');
+      const btnCancelModal = document.getElementById('btn-cancel-modal');
+      const btnSaveModal = document.getElementById('btn-save-modal');
+
+      if (btnOpenModal) {
+        btnOpenModal.addEventListener('click', () => {
+          if (providerModal) providerModal.style.display = 'flex';
+        });
+      }
+      if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => {
+          if (providerModal) providerModal.style.display = 'none';
+        });
+      }
+      if (btnCancelModal) {
+        btnCancelModal.addEventListener('click', () => {
+          if (providerModal) providerModal.style.display = 'none';
+        });
+      }
+      if (btnSaveModal) {
+        btnSaveModal.addEventListener('click', () => {
+          const p = document.getElementById('cfg-provider-select').value;
+          const m = document.getElementById('cfg-model-input').value;
+          const k = document.getElementById('cfg-apikey-input').value;
+          const b = document.getElementById('cfg-baseurl-input').value;
+          alert(`Configuration saved for ${p.toUpperCase()} (${m || 'default'}). You can re-run 'karuvi <repo> --architecture --provider ${p}' to regenerate.`);
+          if (providerModal) providerModal.style.display = 'none';
+        });
+      }
 
       // -------------------------------------------------------------
-      // 7. Global Search Modal (Cmd+K)
+      // Global Search Modal (Cmd+K)
       // -------------------------------------------------------------
-      const searchOverlay = document.getElementById('search-modal-overlay');
+      const searchModal = document.getElementById('search-modal-overlay');
       const searchInput = document.getElementById('global-search-input');
       const searchResultsList = document.getElementById('search-results-list');
 
       function openSearch() {
-        searchOverlay.classList.add('active');
+        searchModal.classList.add('active');
         searchInput.value = '';
         searchInput.focus();
-        renderSearchResults('');
+        runSearch('');
       }
 
       function closeSearch() {
-        searchOverlay.classList.remove('active');
+        searchModal.classList.remove('active');
       }
 
-      document.getElementById('open-search-btn').addEventListener('click', openSearch);
-      searchOverlay.addEventListener('click', function(e) {
-        if (e.target === searchOverlay) closeSearch();
+      document.getElementById('btn-open-search').addEventListener('click', openSearch);
+      searchModal.addEventListener('click', e => {
+        if (e.target === searchModal) closeSearch();
       });
 
-      window.addEventListener('keydown', function(e) {
+      window.addEventListener('keydown', e => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
           e.preventDefault();
-          if (searchOverlay.classList.contains('active')) closeSearch();
-          else openSearch();
-        } else if (e.key === 'Escape' && searchOverlay.classList.contains('active')) {
+          openSearch();
+        } else if (e.key === 'Escape') {
           closeSearch();
         }
       });
 
-      searchInput.addEventListener('input', function() {
-        renderSearchResults(this.value.trim().toLowerCase());
-      });
+      searchInput.addEventListener('input', e => runSearch(e.target.value));
 
-      function renderSearchResults(query) {
+      function runSearch(query) {
+        const q = query.trim().toLowerCase();
         const results = [];
+
         (data.components || []).forEach(c => {
-          if (!query || c.name.toLowerCase().includes(query)) {
-            results.push({ type: 'Component', label: `📦 ${c.name}`, sub: `${c.modules.length} modules`, action: () => { closeSearch(); window.inspectComponent(c.id); } });
+          if (!q || c.name.toLowerCase().includes(q)) {
+            results.push({
+              type: 'Component',
+              label: `🏛️ ${c.name}`,
+              sub: `${c.modules.length} modules (${c.role})`,
+              action: () => { closeSearch(); window.inspectComponent(c.id); }
+            });
           }
         });
+
         (data.modules || []).forEach(m => {
-          if (!query || m.path.toLowerCase().includes(query) || m.role.toLowerCase().includes(query)) {
-            results.push({ type: 'Module', label: `📄 ${m.name}`, sub: `${m.path} (${m.role})`, action: () => { closeSearch(); window.selectModule(m.id); } });
+          if (!q || m.path.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)) {
+            results.push({
+              type: 'Module',
+              label: `📄 ${m.name}`,
+              sub: `${m.path} (${m.role})`,
+              action: () => { closeSearch(); window.selectModule(m.id); }
+            });
           }
-        });
-        (data.modules || []).forEach(m => {
           (m.functions || []).forEach(f => {
-            if (query && f.name.toLowerCase().includes(query)) {
-              results.push({ type: 'Function', label: `⚡ ${f.name}()`, sub: `in ${m.path}`, action: () => { closeSearch(); window.selectModule(m.id); } });
+            if (q && f.name.toLowerCase().includes(q)) {
+              results.push({
+                type: 'Function',
+                label: `⚡ ${f.name}()`,
+                sub: `in ${m.path}`,
+                action: () => { closeSearch(); window.selectModule(m.id); }
+              });
             }
           });
         });
 
         if (results.length === 0) {
-          searchResultsList.innerHTML = '<div style="padding: 16px; color: var(--text-muted); font-size: 13px; text-align: center;">No matches found</div>';
+          searchResultsList.innerHTML = `<div style="padding: 16px; color: var(--text-muted); font-size: 13px;">No results found for "${query}"</div>`;
           return;
         }
 
-        searchResultsList.innerHTML = results.slice(0, 8).map((r, i) => `
-          <div class="search-res-item" id="search-item-${i}">
+        searchResultsList.innerHTML = results.slice(0, 15).map((r, i) => `
+          <div class="search-item" id="search-res-${i}">
             <div>
-              <div style="font-weight: 600; font-size: 13px; color: #fff;">${r.label}</div>
+              <div style="font-size: 13px; font-weight: 600; color: #fff;">${r.label}</div>
               <div style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace;">${r.sub}</div>
             </div>
-            <span style="font-size: 10px; text-transform: uppercase; color: var(--accent-blue); background: rgba(56,189,248,0.1); padding: 2px 6px; border-radius: 4px;">${r.type}</span>
+            <span class="badge" style="background: rgba(255, 255, 255, 0.08);">${r.type}</span>
           </div>
         `).join('');
 
-        results.slice(0, 8).forEach((r, i) => {
-          document.getElementById(`search-item-${i}`).addEventListener('click', r.action);
+        results.slice(0, 15).forEach((r, i) => {
+          document.getElementById(`search-res-${i}`).onclick = r.action;
         });
       }
 
-    })();
+      function renderMarkdown(md) {
+        if (!md) return '';
+        // 1. Protect details blocks
+        const detailsBlocks = [];
+        let text = md.replace(/<details[\s\S]*?<\/details>/gi, match => {
+          detailsBlocks.push(match);
+          return `%%DETAILS_${detailsBlocks.length - 1}%%`;
+        });
+
+        // 2. Protect multi-line code blocks
+        const codeBlocks = [];
+        text = text.replace(/```([a-zA-Z0-9_\-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+          codeBlocks.push(`<pre style="background:#070c18; border:1px solid #1e293b; padding:12px; border-radius:6px; overflow-x:auto; font-family:'Fira Code', monospace; font-size:12px; color:#38bdf8; margin: 12px 0;"><code>${code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`);
+          return `%%CODEBLOCK_${codeBlocks.length - 1}%%`;
+        });
+
+        // 3. Convert markdown tables
+        text = text.replace(/(?:^|\n)(\|.+?\|\n\|[-: |]+\|\n(?:\|.+?\|\n?)+)/g, match => {
+          const lines = match.trim().split('\n');
+          if (lines.length < 3) return match;
+          const headers = lines[0].split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+          const rows = lines.slice(2).map(r => {
+            const cells = r.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+            return `<tr>${cells}</tr>`;
+          }).join('');
+          return `\n<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>\n`;
+        });
+
+        // 4. Escape general HTML except recognized tags
+        let escaped = text
+          .replace(/&(?!amp;|lt;|gt;|quot;|apos;|#)/g, '&amp;')
+          .replace(/<(?!\/?(table|thead|tbody|tr|th|td|pre|code|details|summary|span|div|a|h1|h2|h3|h4|strong|em|li|br|ul)\b)/gi, '&lt;');
+
+        escaped = escaped.replace(/^#### (.*$)/gim, '<h4 style="color: var(--text-primary); font-size: 13px; margin: 14px 0 6px 0; font-weight:700;">$1</h4>');
+        escaped = escaped.replace(/^### (.*$)/gim, '<h3 style="color: var(--accent-cyan); font-size: 15px; margin: 18px 0 8px 0;">$1</h3>');
+        escaped = escaped.replace(/^## (.*$)/gim, '<h2 style="color: #fff; font-size: 18px; margin: 24px 0 12px 0; border-bottom: 1px solid var(--border); padding-bottom: 6px;">$1</h2>');
+        escaped = escaped.replace(/^# (.*$)/gim, '<h1 style="color: #fff; font-size: 24px; margin-bottom: 16px;">$1</h1>');
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/`([^`]+)`/g, '<code style="background: var(--bg-card); color: var(--accent-cyan); padding: 2px 6px; border-radius: 4px; font-family: \'Fira Code\', monospace; font-size: 12px;">$1</code>');
+        escaped = escaped.replace(/^- (.*$)/gim, '<li style="margin-left: 20px; color: var(--text-secondary); margin-bottom: 4px;">$1</li>');
+        
+        // Markdown Links: [label](url)
+        escaped = escaped.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: var(--accent-blue); text-decoration: none; border-bottom: 1px dashed var(--accent-blue); font-weight: 500;">$1</a>');
+
+        // Restore protected blocks
+        codeBlocks.forEach((b, i) => {
+          escaped = escaped.replace(`%%CODEBLOCK_${i}%%`, b);
+        });
+        detailsBlocks.forEach((d, i) => {
+          escaped = escaped.replace(`%%DETAILS_${i}%%`, d);
+        });
+
+        escaped = escaped.replace(/\n\n/g, '<br><br>');
+        return escaped;
+      }
+
+      // Initial Selection: First module in tree
+      if ((data.modules || []).length > 0) {
+        const initialMod = (data.entry_points && data.entry_points.length > 0)
+          ? data.entry_points[0].module
+          : data.modules[0].id;
+        window.selectModule(initialMod, false);
+      }
+    });
   </script>
+
+  <!-- AI Provider & Model Config Modal -->
+  <div id="provider-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span style="font-weight: 700; font-size: 14px; color: #fff;">⚙️ DeepWiki AI Provider Configuration</span>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+          Configure your AI model and provider of choice to generate architecture documentation for this local repository.
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">AI Provider</label>
+          <select id="cfg-provider-select" class="form-input">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="ollama">Ollama (Local Offline)</option>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="custom">Custom (OpenAI-compatible / vLLM)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Model Name</label>
+          <input type="text" id="cfg-model-input" class="form-input" placeholder="e.g. gemini-2.5-flash, gpt-4o, llama3.1">
+        </div>
+        <div class="form-group" id="grp-api-key">
+          <label class="form-lbl">API Key (optional if set in environment)</label>
+          <input type="password" id="cfg-apikey-input" class="form-input" placeholder="Enter API Key">
+        </div>
+        <div class="form-group" id="grp-base-url">
+          <label class="form-lbl">Endpoint URL (for Ollama / custom)</label>
+          <input type="text" id="cfg-baseurl-input" class="form-input" placeholder="e.g. http://localhost:11434">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-modal">Cancel</button>
+        <button class="btn-primary" id="btn-save-modal">Save & Close</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
 """

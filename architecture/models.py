@@ -3,13 +3,140 @@ Architecture Reconstruction Engine Data Models
 ==============================================
 
 Explicit dataclass models defining the architectural abstractions:
-Modules, Components, Relationships, Flows, and the overall ArchitectureModel.
+DeepWiki WikiPage, WikiSection, WikiStructureModel, WikiCacheData,
+as well as Modules, Components, Relationships, Flows, and the overall ArchitectureModel.
 """
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+
+
+@dataclass
+class WikiPage:
+    """Represents a single DeepWiki technical documentation page."""
+    id: str
+    title: str
+    content: str = ""
+    file_paths: list[str] = field(default_factory=list)
+    importance: str = "medium"  # 'high' | 'medium' | 'low'
+    related_pages: list[str] = field(default_factory=list)
+    parent_section: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "content": self.content,
+            "filePaths": self.file_paths,
+            "importance": self.importance,
+            "relatedPages": self.related_pages,
+            "parentSection": self.parent_section,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> WikiPage:
+        return cls(
+            id=d.get("id", ""),
+            title=d.get("title", ""),
+            content=d.get("content", ""),
+            file_paths=d.get("filePaths") or d.get("file_paths") or [],
+            importance=d.get("importance", "medium"),
+            related_pages=d.get("relatedPages") or d.get("related_pages") or [],
+            parent_section=d.get("parentSection") or d.get("parent_section"),
+        )
+
+
+@dataclass
+class WikiSection:
+    """Represents a section in the DeepWiki architecture structure."""
+    id: str
+    title: str
+    pages: list[str] = field(default_factory=list)
+    subsections: list[str] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "pages": self.pages,
+            "subsections": self.subsections,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> WikiSection:
+        return cls(
+            id=d.get("id", ""),
+            title=d.get("title", ""),
+            pages=d.get("pages", []),
+            subsections=d.get("subsections"),
+        )
+
+
+@dataclass
+class WikiStructureModel:
+    """Represents the complete DeepWiki architecture structure."""
+    id: str
+    title: str
+    description: str
+    pages: list[WikiPage] = field(default_factory=list)
+    sections: list[WikiSection] = field(default_factory=list)
+    root_sections: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "pages": [p.to_dict() for p in self.pages],
+            "sections": [s.to_dict() for s in self.sections],
+            "rootSections": self.root_sections,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> WikiStructureModel:
+        return cls(
+            id=d.get("id", "root"),
+            title=d.get("title", ""),
+            description=d.get("description", ""),
+            pages=[WikiPage.from_dict(p) for p in d.get("pages", [])],
+            sections=[WikiSection.from_dict(s) for s in d.get("sections", [])],
+            root_sections=d.get("rootSections") or d.get("root_sections") or [],
+        )
+
+
+@dataclass
+class WikiCacheData:
+    """Stores the cached architecture wiki for instant loading."""
+    wiki_structure: WikiStructureModel
+    generated_pages: dict[str, WikiPage]
+    provider: str | None = None
+    model: str | None = None
+    timestamp: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wiki_structure": self.wiki_structure.to_dict(),
+            "generated_pages": {k: v.to_dict() for k, v in self.generated_pages.items()},
+            "provider": self.provider,
+            "model": self.model,
+            "timestamp": self.timestamp,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> WikiCacheData:
+        ws = WikiStructureModel.from_dict(d.get("wiki_structure", {}))
+        gp = {}
+        for k, v in (d.get("generated_pages") or {}).items():
+            gp[k] = WikiPage.from_dict(v)
+        return cls(
+            wiki_structure=ws,
+            generated_pages=gp,
+            provider=d.get("provider"),
+            model=d.get("model"),
+            timestamp=d.get("timestamp", 0.0),
+        )
 
 
 @dataclass
@@ -41,7 +168,7 @@ class Module:
 
 @dataclass
 class Component:
-    """Represents an architectural component derived from structural and graph evidence."""
+    """Represents an architectural component / subsystem."""
     id: str
     name: str
     modules: list[str] = field(default_factory=list)
@@ -98,7 +225,14 @@ class ArchitectureFlow:
 
 @dataclass
 class ArchitectureConfig:
-    """Configuration options for architecture reconstruction."""
+    """Configuration options for architecture reconstruction and DeepWiki generation."""
+    ai_provider: str = "auto"
+    ai_model: str | None = None
+    api_key: str | None = None
+    base_url: str | None = None
+    comprehensive: bool = True
+    language: str = "en"
+    use_cache: bool = True
     ignored_boundaries: set[str] = field(
         default_factory=lambda: {
             "src",
@@ -132,4 +266,11 @@ class ArchitectureModel:
     entry_points: list[dict[str, Any]] = field(default_factory=list)
     roles: dict[str, str] = field(default_factory=dict)
     flows: list[ArchitectureFlow] = field(default_factory=list)
+    wiki_structure: WikiStructureModel | None = None
+    wiki_pages: dict[str, WikiPage] = field(default_factory=dict)
+    wiki_cache: WikiCacheData | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        from architecture.serialization import serialize_architecture_model
+        return serialize_architecture_model(self)

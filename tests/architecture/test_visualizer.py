@@ -79,20 +79,20 @@ def test_build_unified_payload(fixtures_dir):
     assert "entry_score" in top_entry
     assert "evidence" in top_entry
 
-    # 6. DeepWiki-Pro-Max: Onboarding Course & DeepWiki Explanations
-    assert "onboarding" in payload
-    assert "steps" in payload["onboarding"]
-    assert len(payload["onboarding"]["steps"]) == 4
+    # 6. Architecture Summary & Code Dependency Trees
+    assert "architecture_summary" in payload
+    assert "repository" in payload["architecture_summary"]
+    assert "architecture" in payload["architecture_summary"]
+    assert "modules" in payload["architecture_summary"]
+    assert len(payload["architecture_summary"]["modules"]) == 4
 
-    assert "deepwiki" in payload
-    assert "repository" in payload["deepwiki"]
-    assert "architecture" in payload["deepwiki"]
-    assert "modules" in payload["deepwiki"]
-    assert len(payload["deepwiki"]["modules"]) == 4
+    for m in payload["modules"]:
+        assert "inbound_dependents" in m
+        assert "outbound_dependencies" in m
 
     # 7. Documentation
     assert len(payload["documentation_md"]) > 100
-    assert "# Repository Architecture" in payload["documentation_md"]
+    assert "Architecture" in payload["documentation_md"]
 
 
 def test_generate_atlas_html(fixtures_dir):
@@ -127,14 +127,17 @@ def test_generate_atlas_html(fixtures_dir):
     assert 'id="tab-architecture"' in html
     assert 'id="tab-graph"' in html
     assert 'id="tab-code"' in html
-    assert 'id="tab-docs"' in html
+    # Mermaid must NOT be present; architecture is rendered in vis-network canvas
+    assert 'mermaid' not in html.lower()
+    assert 'data-level="architecture"' in html
+    # In graph explorer, symbols(deep) must be removed
+    assert 'data-level="symbols"' not in html
+    assert 'id="code-deptree-pane"' in html
+    assert 'role-filter-group' in html
     assert 'id="search-modal-overlay"' in html
     assert 'id="global-search-input"' in html
     assert 'id="network-canvas"' in html
     assert 'switchTab(' in html
-    assert 'window.switchView' in html
-    assert 'toggleUnfold(' in html
-    assert 'unfoldedComponents' in html
 
 
 def test_builder_render_html_integration(fixtures_dir):

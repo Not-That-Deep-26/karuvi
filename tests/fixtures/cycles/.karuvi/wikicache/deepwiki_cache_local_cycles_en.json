@@ -1,0 +1,176 @@
+{
+  "wiki_structure": {
+    "id": "root",
+    "title": "cycles Architecture Wiki",
+    "description": "DeepWiki architectural synthesis and subsystem breakdown for cycles.",
+    "pages": [
+      {
+        "id": "architecture-overview",
+        "title": "System Architecture & Overview",
+        "content": "",
+        "filePaths": [
+          "a.py",
+          "b.py",
+          "c.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "core-components",
+          "data-flows"
+        ],
+        "parentSection": "sec-overview"
+      },
+      {
+        "id": "core-components",
+        "title": "Core Components & Subsystems",
+        "content": "",
+        "filePaths": [
+          "a.py",
+          "b.py",
+          "c.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview",
+          "interfaces-and-cli"
+        ],
+        "parentSection": "sec-components"
+      },
+      {
+        "id": "data-flows",
+        "title": "Data Management & Dependency Flows",
+        "content": "",
+        "filePaths": [
+          "a.py",
+          "b.py",
+          "c.py"
+        ],
+        "importance": "medium",
+        "relatedPages": [
+          "core-components"
+        ],
+        "parentSection": "sec-flows"
+      },
+      {
+        "id": "interfaces-and-cli",
+        "title": "Interfaces, CLI & Daemon Architecture",
+        "content": "",
+        "filePaths": [
+          "a.py",
+          "b.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview"
+        ],
+        "parentSection": "sec-interfaces"
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec-overview",
+        "title": "System Overview",
+        "pages": [
+          "architecture-overview"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-components",
+        "title": "Core Subsystems",
+        "pages": [
+          "core-components"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-flows",
+        "title": "Data & Control Flows",
+        "pages": [
+          "data-flows"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-interfaces",
+        "title": "Interfaces & Services",
+        "pages": [
+          "interfaces-and-cli"
+        ],
+        "subsections": null
+      }
+    ],
+    "rootSections": [
+      "sec-overview",
+      "sec-components",
+      "sec-flows",
+      "sec-interfaces"
+    ]
+  },
+  "generated_pages": {
+    "architecture-overview": {
+      "id": "architecture-overview",
+      "title": "System Architecture & Overview",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [a.py](#code:a.py)\n- [b.py](#code:b.py)\n- [c.py](#code:c.py)\n</details>\n\n# System Architecture & Overview\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **System Architecture & Overview** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `a.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [a.py:1-5](#code:a.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `a`.\n\n#### `b.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [b.py:1-5](#code:b.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `b`.\n\n#### `c.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [c.py:1-5](#code:c.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `c`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `a` | Sources: [a.py](#code:a.py) | Subsystem Module |\n| `b` | Sources: [b.py](#code:b.py) | Subsystem Module |\n| `c` | Sources: [c.py](#code:c.py) | Subsystem Module |",
+      "filePaths": [
+        "a.py",
+        "b.py",
+        "c.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "core-components",
+        "data-flows"
+      ],
+      "parentSection": "sec-overview"
+    },
+    "core-components": {
+      "id": "core-components",
+      "title": "Core Components & Subsystems",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [a.py](#code:a.py)\n- [b.py](#code:b.py)\n- [c.py](#code:c.py)\n</details>\n\n# Core Components & Subsystems\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Core Components & Subsystems** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `a.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [a.py:1-5](#code:a.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `a`.\n\n#### `b.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [b.py:1-5](#code:b.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `b`.\n\n#### `c.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [c.py:1-5](#code:c.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `c`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `a` | Sources: [a.py](#code:a.py) | Subsystem Module |\n| `b` | Sources: [b.py](#code:b.py) | Subsystem Module |\n| `c` | Sources: [c.py](#code:c.py) | Subsystem Module |",
+      "filePaths": [
+        "a.py",
+        "b.py",
+        "c.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview",
+        "interfaces-and-cli"
+      ],
+      "parentSection": "sec-components"
+    },
+    "data-flows": {
+      "id": "data-flows",
+      "title": "Data Management & Dependency Flows",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [a.py](#code:a.py)\n- [b.py](#code:b.py)\n- [c.py](#code:c.py)\n</details>\n\n# Data Management & Dependency Flows\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Data Management & Dependency Flows** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `a.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [a.py:1-5](#code:a.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `a`.\n\n#### `b.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [b.py:1-5](#code:b.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `b`.\n\n#### `c.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [c.py:1-5](#code:c.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `c`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `a` | Sources: [a.py](#code:a.py) | Subsystem Module |\n| `b` | Sources: [b.py](#code:b.py) | Subsystem Module |\n| `c` | Sources: [c.py](#code:c.py) | Subsystem Module |",
+      "filePaths": [
+        "a.py",
+        "b.py",
+        "c.py"
+      ],
+      "importance": "medium",
+      "relatedPages": [
+        "core-components"
+      ],
+      "parentSection": "sec-flows"
+    },
+    "interfaces-and-cli": {
+      "id": "interfaces-and-cli",
+      "title": "Interfaces, CLI & Daemon Architecture",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [a.py](#code:a.py)\n- [b.py](#code:b.py)\n</details>\n\n# Interfaces, CLI & Daemon Architecture\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Interfaces, CLI & Daemon Architecture** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `a.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [a.py:1-5](#code:a.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `a`.\n\n#### `b.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [b.py:1-5](#code:b.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `b`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `a` | Sources: [a.py](#code:a.py) | Subsystem Module |\n| `b` | Sources: [b.py](#code:b.py) | Subsystem Module |",
+      "filePaths": [
+        "a.py",
+        "b.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview"
+      ],
+      "parentSection": "sec-interfaces"
+    }
+  },
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "timestamp": 1788778857.9613178
+}

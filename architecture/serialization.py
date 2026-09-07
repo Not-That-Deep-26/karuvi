@@ -82,6 +82,11 @@ def serialize_architecture_model(model: ArchitectureModel) -> dict[str, Any]:
         "component_relationships": len(component_graph_data["edges"]),
     }
 
+    # DeepWiki data
+    wiki_struct_data = model.wiki_structure.to_dict() if model.wiki_structure else None
+    wiki_pages_data = {k: v.to_dict() for k, v in model.wiki_pages.items()}
+    wiki_cache_data = model.wiki_cache.to_dict() if model.wiki_cache else None
+
     return {
         "repository": str(model.repository_root),
         "statistics": stats,
@@ -91,6 +96,9 @@ def serialize_architecture_model(model: ArchitectureModel) -> dict[str, Any]:
         "entry_points": model.entry_points,
         "roles": model.roles,
         "flows": flows_serialized,
+        "wiki_structure": wiki_struct_data,
+        "wiki_pages": wiki_pages_data,
+        "wiki_cache": wiki_cache_data,
         "metadata": model.metadata,
     }
 

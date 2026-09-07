@@ -554,13 +554,27 @@ def get_repo_graph():
 @app.get(
     "/architecture",
     summary="Reconstructed architecture model (JSON)",
-    description="Return reconstructed components, boundaries, roles, metrics, entrypoints, and flows.",
+    description="Return reconstructed components, boundaries, roles, metrics, entrypoints, flows, and DeepWiki architecture.",
 )
-def get_architecture():
+def get_architecture(
+    provider: str = "offline",
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    use_cache: bool = True,
+):
     _require_project()
     builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
     from architecture.analyzer import ArchitectureAnalyzer
-    arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
+    from architecture.models import ArchitectureConfig
+    cfg = ArchitectureConfig(
+        ai_provider=provider,
+        ai_model=model,
+        api_key=api_key,
+        base_url=base_url,
+        use_cache=use_cache,
+    )
+    arch_model = ArchitectureAnalyzer(PROJECT_ROOT, config=cfg).analyze(builder)
     return arch_model.to_dict()
 
 
@@ -569,12 +583,26 @@ def get_architecture():
     summary="Architecture documentation (Markdown)",
     description="Return deterministic DeepWiki-style architecture documentation.",
 )
-def get_architecture_doc():
+def get_architecture_doc(
+    provider: str = "offline",
+    model: str | None = None,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    use_cache: bool = True,
+):
     _require_project()
     builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
     from architecture.analyzer import ArchitectureAnalyzer
+    from architecture.models import ArchitectureConfig
     from architecture.documentation import generate_architecture_markdown
-    arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
+    cfg = ArchitectureConfig(
+        ai_provider=provider,
+        ai_model=model,
+        api_key=api_key,
+        base_url=base_url,
+        use_cache=use_cache,
+    )
+    arch_model = ArchitectureAnalyzer(PROJECT_ROOT, config=cfg).analyze(builder)
     return {"documentation": generate_architecture_markdown(arch_model)}
 
 

@@ -128,8 +128,7 @@ def display_commands_table():
 
     commands = [
         ("karuvi <repo>", "Scan repository, build graph, and display dashboard", "uv run karuvi /path/to/repo"),
-        ("onboard, --onboard", "Progressive reading roadmap with complexity tiers", "uv run karuvi <repo> onboard --level beginner"),
-        ("explain, --explain", "Multi-level DeepWiki progressive technical explanation", "uv run karuvi <repo> explain [repo|arch|<file>]"),
+        ("explain, --explain", "Progressive architecture technical explanation & synthesis", "uv run karuvi <repo> explain [repo|arch|<file>]"),
         ("--why <src> <tgt>", "Explain why source module depends on target module", "uv run karuvi <repo> --why src/api.py src/auth.py"),
         ("explore, --explore", "Generate and open Living Codebase Atlas in browser", "uv run karuvi <repo> explore"),
         ("--tree, -t <file>", "Print aesthetic ASCII intra-file AST & code flow tree", "uv run karuvi <repo> -t src/app.py"),
@@ -465,8 +464,7 @@ def interactive_menu(
                 "[bold cyan][6][/bold cyan] 📊 Full Repository Dashboard\n"
                 "[bold cyan][7][/bold cyan] 🌐 Export Living Atlas HTML    "
                 "[bold cyan][8][/bold cyan] 💾 Export JSON Report\n"
-                "[bold cyan][9][/bold cyan] 🎓 Onboarding Reading Order    "
-                "[bold cyan][10][/bold cyan] 📖 DeepWiki Technical Guide\n"
+                "[bold cyan][9][/bold cyan] 📖 Architecture Technical Guide\n"
                 "[bold cyan][?] [/bold cyan] 🛠️  Show Commands Reference    "
                 "[bold red][q][/bold red] Exit",
                 title="[bold]Karuvi Interactive Menu[/bold]",
@@ -474,7 +472,7 @@ def interactive_menu(
             )
         )
         try:
-            choice = input("Select an action [1-10, ?, q]: ").strip()
+            choice = input("Select an action [1-9, ?, q]: ").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[yellow]Exiting interactive mode.[/yellow]")
             break
@@ -533,14 +531,8 @@ def interactive_menu(
             export_full_json(repo_path, parsed_modules, builder, json_out)
         elif choice == "9":
             from architecture.analyzer import ArchitectureAnalyzer
-            from architecture.onboarding import CodebaseOnboardingEngine
             arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
-            plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
-            render_onboarding_course(plan, level="beginner")
-        elif choice == "10":
-            from architecture.analyzer import ArchitectureAnalyzer
-            arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
-            render_deepwiki_explanation("repo", arch_model, builder, level="beginner")
+            render_architecture_explanation("repo", arch_model, builder, level="beginner")
         console.print()
 
 
@@ -671,69 +663,24 @@ def export_html_graph(builder: RepoGraphBuilder, output_path: Path, arch_model: 
     console.print(f"[bold green]✔ Saved Living Codebase Atlas interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
 
 
-def render_onboarding_course(plan: Any, level: str = "beginner"):
-    """Renders the step-by-step onboarding plan in rich terminal output."""
-    console.print(
-        Panel(
-            f"[bold]Estimated Read Time:[/bold] [yellow]{plan.estimated_read_time_minutes} minutes[/yellow]  •  "
-            f"[bold]Total Steps:[/bold] [cyan]{plan.total_steps}[/cyan]  •  "
-            f"[bold]Complexity Level:[/bold] [magenta]{level.capitalize()}[/magenta]",
-            title="[bold cyan]🎓 Karuvi Progressive Codebase Onboarding Course[/bold cyan]",
-            border_style="cyan",
-        )
-    )
-
-    for step in plan.steps:
-        summary = step.beginner_summary
-        if level == "intermediate":
-            summary = step.intermediate_summary
-        elif level == "advanced":
-            summary = step.advanced_summary
-
-        step_table = Table.grid(padding=(0, 2))
-        step_table.add_column(style="bold cyan", width=18)
-        step_table.add_column(style="white")
-
-        step_table.add_row("Summary:", summary)
-        step_table.add_row("Why Now:", f"[dim]{step.why_now}[/dim]")
-        step_table.add_row("Target Modules:", ", ".join(f"[cyan]{m}[/cyan]" for m in step.target_modules))
-
-        if step.prerequisites_covered:
-            step_table.add_row("Prerequisites:", ", ".join(f"[green]✓ {p}[/green]" for p in step.prerequisites_covered[:5]))
-
-        if step.next_unlocks:
-            step_table.add_row("Next Unlocks:", ", ".join(f"[blue]➔ {u}[/blue]" for u in step.next_unlocks[:5]))
-
-        if step.key_symbols:
-            sym_strs = [f"{s['name']} ({s['type']})" for s in step.key_symbols[:6]]
-            step_table.add_row("Key Symbols:", ", ".join(f"[yellow]{s}[/yellow]" for s in sym_strs))
-
-        cycle_prefix = "[bold red]🔄 (Circular Loop) [/bold red]" if step.is_cycle_group else ""
-        panel_title = f"{cycle_prefix}Step {step.step_number}/{plan.total_steps}: {step.title}"
-        border_style = "red" if step.is_cycle_group else "blue"
-
-        console.print(Panel(step_table, title=panel_title, border_style=border_style))
-        console.print()
-
-
-def render_deepwiki_explanation(
+def render_architecture_explanation(
     topic: str,
     arch_model: Any,
     repo_builder: Any,
     level: str = "beginner",
 ):
-    """Renders multi-level DeepWiki progressive technical explanations."""
-    from architecture.explanation import ExplanationEngine
+    """Renders progressive technical architecture explanations."""
+    from architecture.explanation import ArchitectureExplanationEngine
 
-    engine = ExplanationEngine()
+    engine = ArchitectureExplanationEngine()
     topic_clean = topic.strip().lower()
 
     if topic_clean in ("repo", "overview", "all", "."):
         doc = engine.explain_repository(arch_model, repo_builder)
-        console.print(Panel(Markdown(doc), title="[bold cyan]📖 DeepWiki — Repository Technical Guide[/bold cyan]", border_style="cyan"))
+        console.print(Panel(Markdown(doc), title="[bold cyan]📖 Repository Technical Architecture Guide[/bold cyan]", border_style="cyan"))
     elif topic_clean in ("arch", "architecture", "subsystems"):
         doc = engine.explain_architecture(arch_model)
-        console.print(Panel(Markdown(doc), title="[bold cyan]🏛️ DeepWiki — Architectural Subsystems & Flow[/bold cyan]", border_style="magenta"))
+        console.print(Panel(Markdown(doc), title="[bold cyan]🏛️ Architectural Subsystems & Flow Guide[/bold cyan]", border_style="magenta"))
     else:
         # Match against module paths or names
         matched_mod = None
@@ -762,7 +709,7 @@ def render_deepwiki_explanation(
             if mod_doc.get("failure_modes"):
                 mod_table.add_row("Failure Modes:", " • ".join(mod_doc["failure_modes"]))
 
-            console.print(Panel(mod_table, title=f"[bold cyan]🔍 DeepWiki Module Explanation: {matched_mod}[/bold cyan]", border_style="cyan"))
+            console.print(Panel(mod_table, title=f"[bold cyan]🔍 Module Architecture Explanation: {matched_mod}[/bold cyan]", border_style="cyan"))
         else:
             console.print(f"[bold red]Error:[/bold red] Module or explanation target [yellow]{topic}[/yellow] not found in parsed modules.")
 
@@ -805,14 +752,13 @@ def main():
     # karuvi explain [repo] [target]
     # karuvi explore [repo]
     # karuvi analyze [repo]
+    if len(sys.argv) > 2 and not sys.argv[1].startswith("-") and sys.argv[2].lower() in ("explain", "explore", "analyze"):
+        repo_val = sys.argv.pop(1)
+        sys.argv.insert(2, repo_val)
+
     if len(sys.argv) > 1:
         cmd = sys.argv[1].lower()
-        if cmd == "onboard":
-            sys.argv[1] = "--onboard"
-            if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
-                repo_val = sys.argv.pop(2)
-                sys.argv.extend(["--repo", repo_val])
-        elif cmd == "explore":
+        if cmd == "explore":
             sys.argv[1] = "--explore"
             if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
                 repo_val = sys.argv.pop(2)
@@ -850,23 +796,18 @@ def main():
         help="Path to repository root",
     )
     parser.add_argument(
-        "--onboard",
-        action="store_true",
-        help="Generate a beginner-friendly progressive onboarding course for the repository",
-    )
-    parser.add_argument(
         "--level",
         type=str,
         choices=["beginner", "intermediate", "advanced"],
         default="beginner",
-        help="Complexity level for onboarding and explanations (default: beginner)",
+        help="Complexity level for technical explanations (default: beginner)",
     )
     parser.add_argument(
         "--explain",
         nargs="?",
         const="repo",
         default=None,
-        help="Generate multi-level DeepWiki explanation (Level 1: repo overview, Level 2: 'arch', Level 3: module path)",
+        help="Generate progressive technical architecture explanation (Level 1: repo overview, Level 2: 'arch', Level 3: module path)",
     )
     parser.add_argument(
         "--why",
@@ -949,6 +890,38 @@ def main():
         help="Reconstruct and display high-level architectural components and flows",
     )
     parser.add_argument(
+        "--provider",
+        "-p",
+        type=str,
+        default="auto",
+        choices=["auto", "gemini", "openai", "openrouter", "ollama", "anthropic", "custom"],
+        help="AI Provider for DeepWiki architecture generation (gemini, openai, openrouter, ollama, anthropic)",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        type=str,
+        default=None,
+        help="AI Model name for architecture analysis (e.g. gemini-2.5-flash, gpt-4o, llama3.1)",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API Key for selected AI provider",
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default=None,
+        help="Base URL endpoint (for Ollama, vLLM, LMStudio, or custom OpenAI endpoints)",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Force regeneration of architecture wiki instead of using cache",
+    )
+    parser.add_argument(
         "--arch-json",
         type=str,
         default=None,
@@ -958,7 +931,7 @@ def main():
         "--arch-doc",
         type=str,
         default=None,
-        help="Path to export deterministic architecture Markdown documentation",
+        help="Path to export DeepWiki architecture Markdown documentation",
     )
     parser.add_argument(
         "--interactive",
@@ -1098,20 +1071,30 @@ def main():
             console.print(f"[bold red]Error:[/bold red] File {args.chart} not found in parsed modules.")
 
     arch_model = None
-    # Reconstructed Architecture Mode & DeepWiki Features
+    # Reconstructed Architecture Mode & Intelligence Features
     needs_arch_model = bool(
         args.architecture
         or args.arch_json
         or args.arch_doc
-        or args.onboard
         or (args.explain is not None)
         or args.why
         or args.explore
+        or args.provider
+        or args.model
+        or args.html
     )
     if needs_arch_model:
         from architecture.analyzer import ArchitectureAnalyzer
+        from architecture.models import ArchitectureConfig
 
-        arch_analyzer = ArchitectureAnalyzer(repo_path)
+        arch_config = ArchitectureConfig(
+            ai_provider=args.provider or "offline",
+            ai_model=args.model or "",
+            api_key=args.api_key or "",
+            base_url=args.base_url or "",
+            use_cache=not args.no_cache,
+        )
+        arch_analyzer = ArchitectureAnalyzer(repo_path, config=arch_config)
         arch_model = arch_analyzer.analyze(builder)
 
         if args.architecture:
@@ -1130,13 +1113,8 @@ def main():
             out_doc.write_text(doc_text, encoding="utf-8")
             console.print(f"[bold green]✔[/bold green] Exported architecture documentation to [cyan]{args.arch_doc}[/cyan]")
 
-        if args.onboard:
-            from architecture.onboarding import CodebaseOnboardingEngine
-            plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
-            render_onboarding_course(plan, level=args.level)
-
         if args.explain is not None:
-            render_deepwiki_explanation(args.explain, arch_model, builder, level=args.level)
+            render_architecture_explanation(args.explain, arch_model, builder, level=args.level)
 
         if args.why:
             render_relationship_explanation(args.why[0], args.why[1], arch_model, builder)
@@ -1164,7 +1142,6 @@ def main():
         or args.graph
         or args.chart
         or args.architecture
-        or args.onboard
         or (args.explain is not None)
         or args.why
         or args.explore

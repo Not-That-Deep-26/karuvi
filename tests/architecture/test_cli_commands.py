@@ -11,22 +11,8 @@ import sys
 FIXTURE_PATH = str(Path(__file__).parent.parent / "fixtures" / "simple_layered")
 
 
-def test_cli_onboard_command():
-    """Verify `karuvi onboard <repo> --level beginner` runs cleanly."""
-    result = subprocess.run(
-        [sys.executable, "cli.py", "onboard", FIXTURE_PATH, "--level", "beginner"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == 0
-    assert "Karuvi Progressive Codebase Onboarding Course" in result.stdout
-    assert "Step 1/4" in result.stdout
-    assert "UserRepository" in result.stdout
-
-
 def test_cli_explain_repo_command():
-    """Verify `karuvi explain <repo>` generates DeepWiki overview."""
+    """Verify `karuvi explain <repo>` generates architecture technical guide."""
     result = subprocess.run(
         [sys.executable, "cli.py", "explain", FIXTURE_PATH],
         capture_output=True,
@@ -34,9 +20,9 @@ def test_cli_explain_repo_command():
         check=False,
     )
     assert result.returncode == 0
-    assert "DeepWiki — Repository Technical Guide" in result.stdout
+    assert "Repository Technical Architecture Guide" in result.stdout
     assert "Executive Summary" in result.stdout
-    assert "api-services" in result.stdout
+    assert "Architecture" in result.stdout
 
 
 def test_cli_explain_arch_command():
@@ -48,8 +34,8 @@ def test_cli_explain_arch_command():
         check=False,
     )
     assert result.returncode == 0
-    assert "DeepWiki — Architectural Subsystems & Flow" in result.stdout
-    assert "repositories-services" in result.stdout
+    assert "Architectural Subsystems & Flow Guide" in result.stdout
+    assert "Core Components & Subsystems" in result.stdout
 
 
 def test_cli_explain_module_command():
@@ -61,7 +47,7 @@ def test_cli_explain_module_command():
         check=False,
     )
     assert result.returncode == 0
-    assert "DeepWiki Module Explanation: services/auth.py" in result.stdout
+    assert "Module Architecture Explanation: services/auth.py" in result.stdout
     assert "BRIDGE" in result.stdout
 
 

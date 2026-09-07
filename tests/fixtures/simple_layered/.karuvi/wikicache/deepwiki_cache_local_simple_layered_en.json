@@ -1,0 +1,180 @@
+{
+  "wiki_structure": {
+    "id": "root",
+    "title": "simple_layered Architecture Wiki",
+    "description": "DeepWiki architectural synthesis and subsystem breakdown for simple_layered.",
+    "pages": [
+      {
+        "id": "architecture-overview",
+        "title": "System Architecture & Overview",
+        "content": "",
+        "filePaths": [
+          "api/main.py",
+          "repositories/users.py",
+          "services/auth.py",
+          "services/users.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "core-components",
+          "data-flows"
+        ],
+        "parentSection": "sec-overview"
+      },
+      {
+        "id": "core-components",
+        "title": "Core Components & Subsystems",
+        "content": "",
+        "filePaths": [
+          "repositories/users.py",
+          "services/auth.py",
+          "services/users.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview",
+          "interfaces-and-cli"
+        ],
+        "parentSection": "sec-components"
+      },
+      {
+        "id": "data-flows",
+        "title": "Data Management & Dependency Flows",
+        "content": "",
+        "filePaths": [
+          "repositories/users.py",
+          "services/auth.py",
+          "services/users.py"
+        ],
+        "importance": "medium",
+        "relatedPages": [
+          "core-components"
+        ],
+        "parentSection": "sec-flows"
+      },
+      {
+        "id": "interfaces-and-cli",
+        "title": "Interfaces, CLI & Daemon Architecture",
+        "content": "",
+        "filePaths": [
+          "api/main.py",
+          "repositories/users.py",
+          "services/auth.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview"
+        ],
+        "parentSection": "sec-interfaces"
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec-overview",
+        "title": "System Overview",
+        "pages": [
+          "architecture-overview"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-components",
+        "title": "Core Subsystems",
+        "pages": [
+          "core-components"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-flows",
+        "title": "Data & Control Flows",
+        "pages": [
+          "data-flows"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-interfaces",
+        "title": "Interfaces & Services",
+        "pages": [
+          "interfaces-and-cli"
+        ],
+        "subsections": null
+      }
+    ],
+    "rootSections": [
+      "sec-overview",
+      "sec-components",
+      "sec-flows",
+      "sec-interfaces"
+    ]
+  },
+  "generated_pages": {
+    "architecture-overview": {
+      "id": "architecture-overview",
+      "title": "System Architecture & Overview",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [api/main.py](#code:api/main.py)\n- [repositories/users.py](#code:repositories/users.py)\n- [services/auth.py](#code:services/auth.py)\n- [services/users.py](#code:services/users.py)\n</details>\n\n# System Architecture & Overview\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **System Architecture & Overview** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `api/main.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [api/main.py:1-8](#code:api/main.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `repositories/users.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [repositories/users.py:1-5](#code:repositories/users.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n#### `services/auth.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [services/auth.py:1-8](#code:services/auth.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `auth`.\n\n#### `services/users.py`\n- **Lines**: 7\n- **Source Reference**: Sources: [services/users.py:1-7](#code:services/users.py:1-7)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `main` | Sources: [api/main.py](#code:api/main.py) | Subsystem Module |\n| `users` | Sources: [repositories/users.py](#code:repositories/users.py) | Subsystem Module |\n| `auth` | Sources: [services/auth.py](#code:services/auth.py) | Subsystem Module |\n| `users` | Sources: [services/users.py](#code:services/users.py) | Subsystem Module |",
+      "filePaths": [
+        "api/main.py",
+        "repositories/users.py",
+        "services/auth.py",
+        "services/users.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "core-components",
+        "data-flows"
+      ],
+      "parentSection": "sec-overview"
+    },
+    "core-components": {
+      "id": "core-components",
+      "title": "Core Components & Subsystems",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [repositories/users.py](#code:repositories/users.py)\n- [services/auth.py](#code:services/auth.py)\n- [services/users.py](#code:services/users.py)\n</details>\n\n# Core Components & Subsystems\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Core Components & Subsystems** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `repositories/users.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [repositories/users.py:1-5](#code:repositories/users.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n#### `services/auth.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [services/auth.py:1-8](#code:services/auth.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `auth`.\n\n#### `services/users.py`\n- **Lines**: 7\n- **Source Reference**: Sources: [services/users.py:1-7](#code:services/users.py:1-7)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `users` | Sources: [repositories/users.py](#code:repositories/users.py) | Subsystem Module |\n| `auth` | Sources: [services/auth.py](#code:services/auth.py) | Subsystem Module |\n| `users` | Sources: [services/users.py](#code:services/users.py) | Subsystem Module |",
+      "filePaths": [
+        "repositories/users.py",
+        "services/auth.py",
+        "services/users.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview",
+        "interfaces-and-cli"
+      ],
+      "parentSection": "sec-components"
+    },
+    "data-flows": {
+      "id": "data-flows",
+      "title": "Data Management & Dependency Flows",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [repositories/users.py](#code:repositories/users.py)\n- [services/auth.py](#code:services/auth.py)\n- [services/users.py](#code:services/users.py)\n</details>\n\n# Data Management & Dependency Flows\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Data Management & Dependency Flows** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `repositories/users.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [repositories/users.py:1-5](#code:repositories/users.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n#### `services/auth.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [services/auth.py:1-8](#code:services/auth.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `auth`.\n\n#### `services/users.py`\n- **Lines**: 7\n- **Source Reference**: Sources: [services/users.py:1-7](#code:services/users.py:1-7)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `users` | Sources: [repositories/users.py](#code:repositories/users.py) | Subsystem Module |\n| `auth` | Sources: [services/auth.py](#code:services/auth.py) | Subsystem Module |\n| `users` | Sources: [services/users.py](#code:services/users.py) | Subsystem Module |",
+      "filePaths": [
+        "repositories/users.py",
+        "services/auth.py",
+        "services/users.py"
+      ],
+      "importance": "medium",
+      "relatedPages": [
+        "core-components"
+      ],
+      "parentSection": "sec-flows"
+    },
+    "interfaces-and-cli": {
+      "id": "interfaces-and-cli",
+      "title": "Interfaces, CLI & Daemon Architecture",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [api/main.py](#code:api/main.py)\n- [repositories/users.py](#code:repositories/users.py)\n- [services/auth.py](#code:services/auth.py)\n</details>\n\n# Interfaces, CLI & Daemon Architecture\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Interfaces, CLI & Daemon Architecture** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `api/main.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [api/main.py:1-8](#code:api/main.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `repositories/users.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [repositories/users.py:1-5](#code:repositories/users.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `users`.\n\n#### `services/auth.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [services/auth.py:1-8](#code:services/auth.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `auth`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `main` | Sources: [api/main.py](#code:api/main.py) | Subsystem Module |\n| `users` | Sources: [repositories/users.py](#code:repositories/users.py) | Subsystem Module |\n| `auth` | Sources: [services/auth.py](#code:services/auth.py) | Subsystem Module |",
+      "filePaths": [
+        "api/main.py",
+        "repositories/users.py",
+        "services/auth.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview"
+      ],
+      "parentSection": "sec-interfaces"
+    }
+  },
+  "provider": "offline",
+  "model": "default",
+  "timestamp": 1788780002.7704716
+}

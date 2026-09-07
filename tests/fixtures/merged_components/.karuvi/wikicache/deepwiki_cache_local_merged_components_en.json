@@ -1,0 +1,176 @@
+{
+  "wiki_structure": {
+    "id": "root",
+    "title": "merged_components Architecture Wiki",
+    "description": "DeepWiki architectural synthesis and subsystem breakdown for merged_components.",
+    "pages": [
+      {
+        "id": "architecture-overview",
+        "title": "System Architecture & Overview",
+        "content": "",
+        "filePaths": [
+          "auth/login.py",
+          "sessions/refresh.py",
+          "sessions/token.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "core-components",
+          "data-flows"
+        ],
+        "parentSection": "sec-overview"
+      },
+      {
+        "id": "core-components",
+        "title": "Core Components & Subsystems",
+        "content": "",
+        "filePaths": [
+          "auth/login.py",
+          "sessions/refresh.py",
+          "sessions/token.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview",
+          "interfaces-and-cli"
+        ],
+        "parentSection": "sec-components"
+      },
+      {
+        "id": "data-flows",
+        "title": "Data Management & Dependency Flows",
+        "content": "",
+        "filePaths": [
+          "auth/login.py",
+          "sessions/refresh.py",
+          "sessions/token.py"
+        ],
+        "importance": "medium",
+        "relatedPages": [
+          "core-components"
+        ],
+        "parentSection": "sec-flows"
+      },
+      {
+        "id": "interfaces-and-cli",
+        "title": "Interfaces, CLI & Daemon Architecture",
+        "content": "",
+        "filePaths": [
+          "auth/login.py",
+          "sessions/refresh.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview"
+        ],
+        "parentSection": "sec-interfaces"
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec-overview",
+        "title": "System Overview",
+        "pages": [
+          "architecture-overview"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-components",
+        "title": "Core Subsystems",
+        "pages": [
+          "core-components"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-flows",
+        "title": "Data & Control Flows",
+        "pages": [
+          "data-flows"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-interfaces",
+        "title": "Interfaces & Services",
+        "pages": [
+          "interfaces-and-cli"
+        ],
+        "subsections": null
+      }
+    ],
+    "rootSections": [
+      "sec-overview",
+      "sec-components",
+      "sec-flows",
+      "sec-interfaces"
+    ]
+  },
+  "generated_pages": {
+    "architecture-overview": {
+      "id": "architecture-overview",
+      "title": "System Architecture & Overview",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [auth/login.py](#code:auth/login.py)\n- [sessions/refresh.py](#code:sessions/refresh.py)\n- [sessions/token.py](#code:sessions/token.py)\n</details>\n\n# System Architecture & Overview\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **System Architecture & Overview** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `auth/login.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [auth/login.py:1-5](#code:auth/login.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `login`.\n\n#### `sessions/refresh.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/refresh.py:1-5](#code:sessions/refresh.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `refresh`.\n\n#### `sessions/token.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/token.py:1-5](#code:sessions/token.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `token`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `login` | Sources: [auth/login.py](#code:auth/login.py) | Subsystem Module |\n| `refresh` | Sources: [sessions/refresh.py](#code:sessions/refresh.py) | Subsystem Module |\n| `token` | Sources: [sessions/token.py](#code:sessions/token.py) | Subsystem Module |",
+      "filePaths": [
+        "auth/login.py",
+        "sessions/refresh.py",
+        "sessions/token.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "core-components",
+        "data-flows"
+      ],
+      "parentSection": "sec-overview"
+    },
+    "core-components": {
+      "id": "core-components",
+      "title": "Core Components & Subsystems",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [auth/login.py](#code:auth/login.py)\n- [sessions/refresh.py](#code:sessions/refresh.py)\n- [sessions/token.py](#code:sessions/token.py)\n</details>\n\n# Core Components & Subsystems\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Core Components & Subsystems** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `auth/login.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [auth/login.py:1-5](#code:auth/login.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `login`.\n\n#### `sessions/refresh.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/refresh.py:1-5](#code:sessions/refresh.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `refresh`.\n\n#### `sessions/token.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/token.py:1-5](#code:sessions/token.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `token`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `login` | Sources: [auth/login.py](#code:auth/login.py) | Subsystem Module |\n| `refresh` | Sources: [sessions/refresh.py](#code:sessions/refresh.py) | Subsystem Module |\n| `token` | Sources: [sessions/token.py](#code:sessions/token.py) | Subsystem Module |",
+      "filePaths": [
+        "auth/login.py",
+        "sessions/refresh.py",
+        "sessions/token.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview",
+        "interfaces-and-cli"
+      ],
+      "parentSection": "sec-components"
+    },
+    "data-flows": {
+      "id": "data-flows",
+      "title": "Data Management & Dependency Flows",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [auth/login.py](#code:auth/login.py)\n- [sessions/refresh.py](#code:sessions/refresh.py)\n- [sessions/token.py](#code:sessions/token.py)\n</details>\n\n# Data Management & Dependency Flows\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Data Management & Dependency Flows** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `auth/login.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [auth/login.py:1-5](#code:auth/login.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `login`.\n\n#### `sessions/refresh.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/refresh.py:1-5](#code:sessions/refresh.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `refresh`.\n\n#### `sessions/token.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/token.py:1-5](#code:sessions/token.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `token`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `login` | Sources: [auth/login.py](#code:auth/login.py) | Subsystem Module |\n| `refresh` | Sources: [sessions/refresh.py](#code:sessions/refresh.py) | Subsystem Module |\n| `token` | Sources: [sessions/token.py](#code:sessions/token.py) | Subsystem Module |",
+      "filePaths": [
+        "auth/login.py",
+        "sessions/refresh.py",
+        "sessions/token.py"
+      ],
+      "importance": "medium",
+      "relatedPages": [
+        "core-components"
+      ],
+      "parentSection": "sec-flows"
+    },
+    "interfaces-and-cli": {
+      "id": "interfaces-and-cli",
+      "title": "Interfaces, CLI & Daemon Architecture",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [auth/login.py](#code:auth/login.py)\n- [sessions/refresh.py](#code:sessions/refresh.py)\n</details>\n\n# Interfaces, CLI & Daemon Architecture\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Interfaces, CLI & Daemon Architecture** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `auth/login.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [auth/login.py:1-5](#code:auth/login.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `login`.\n\n#### `sessions/refresh.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [sessions/refresh.py:1-5](#code:sessions/refresh.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `refresh`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `login` | Sources: [auth/login.py](#code:auth/login.py) | Subsystem Module |\n| `refresh` | Sources: [sessions/refresh.py](#code:sessions/refresh.py) | Subsystem Module |",
+      "filePaths": [
+        "auth/login.py",
+        "sessions/refresh.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview"
+      ],
+      "parentSection": "sec-interfaces"
+    }
+  },
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "timestamp": 1788778857.967777
+}
