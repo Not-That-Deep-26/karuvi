@@ -127,9 +127,11 @@ def display_commands_table():
     table.add_column("Example Usage", style="cyan", width=42)
 
     commands = [
-        ("karuvi <repo>", "Scan repository, build graph, and display dashboard", "uv run karuvi /path/to/repo"),
+        ("karuvi <repo>", "Export the Atlas and auto-serve it over local HTTP in your browser", "uv run karuvi /path/to/repo"),
         ("onboard, --onboard", "Progressive reading roadmap with complexity tiers", "uv run karuvi <repo> onboard --level beginner"),
-        ("explore, --explore", "Generate and open Living Codebase Atlas in browser", "uv run karuvi <repo> explore"),
+        ("explore, --explore", "Classic terminal dashboard with opt-in JSON/HTML exports", "uv run karuvi <repo> explore"),
+        ("export", "Export analysis JSON + Atlas HTML to the repo root", "uv run karuvi <repo> export"),
+        ("--open", "Auto-serve an exported atlas over local HTTP", "uv run karuvi <repo> export --open"),
         ("--tree, -t <file>", "Print aesthetic ASCII intra-file AST & code flow tree", "uv run karuvi <repo> -t src/app.py"),
         ("--deps <file>", "Print upstream imports & downstream dependents tree", "uv run karuvi <repo> --deps src/app.py"),
         ("--chart <file>", "Print indentation-based control flow chart for a file", "uv run karuvi <repo> --chart src/app.py"),
@@ -664,6 +666,60 @@ def export_html_graph(builder: RepoGraphBuilder, output_path: Path, arch_model: 
     console.print(f"[bold green]✔ Saved Living Codebase Atlas interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
 
 
+def export_outputs(
+    repo_path: Path,
+    parsed_modules: dict[str, Module],
+    builder: RepoGraphBuilder,
+    arch_model: Any = None,
+    json_path: Path | None = None,
+    html_path: Path | None = None,
+) -> dict[str, Path]:
+    """Consolidated export for the repository-wide JSON report and HTML atlas."""
+    if html_path is not None and arch_model is None:
+        from architecture.analyzer import ArchitectureAnalyzer
+
+        arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
+
+    written: dict[str, Path] = {}
+    if json_path is not None:
+        export_full_json(repo_path, parsed_modules, builder, json_path)
+        written["json"] = json_path
+    if html_path is not None:
+        export_html_graph(builder, html_path, arch_model=arch_model)
+        written["html"] = html_path
+    return written
+
+
+def _atlas_server(atlas_path: Path, port: int = 8000):
+    """Build a static HTTP server rooted at the atlas file's directory."""
+    from functools import partial
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+    handler = partial(SimpleHTTPRequestHandler, directory=str(atlas_path.parent))
+    try:
+        return ThreadingHTTPServer(("127.0.0.1", port), handler)
+    except OSError:
+        return ThreadingHTTPServer(("127.0.0.1", 0), handler)
+
+
+def serve_and_open(atlas_path: Path, port: int = 8000):
+    """Serve the exported atlas HTML over local HTTP and open it in the browser."""
+    server = _atlas_server(atlas_path, port)
+    url = f"http://127.0.0.1:{server.server_address[1]}/{atlas_path.name}"
+    console.print(f"[bold green]✔ Serving Living Codebase Atlas at:[/bold green] [cyan]{url}[/cyan]")
+    console.print("[dim]Press Ctrl+C to stop the server.[/dim]")
+    try:
+        import webbrowser
+        webbrowser.open(url)
+    except Exception:
+        pass
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Server stopped.[/yellow]")
+    return server
+
+
 def render_onboarding_course(plan: Any, level: str = "beginner"):
     """Renders the step-by-step onboarding plan in rich terminal output."""
     console.print(
@@ -736,6 +792,11 @@ def main():
                 pass
         elif cmd == "analyze":
             sys.argv.pop(1)
+        elif cmd == "export":
+            sys.argv[1] = "--export"
+            if len(sys.argv) > 2 and not sys.argv[2].startswith("-"):
+                repo_val = sys.argv.pop(2)
+                sys.argv.extend(["--repo", repo_val])
 
     parser = argparse.ArgumentParser(
         description="Karuvi — Whole-Repository Dependency Analyzer & Symbol Tracer",
@@ -770,7 +831,7 @@ def main():
     parser.add_argument(
         "--explore",
         action="store_true",
-        help="Build and launch the Living Codebase Atlas interactive web visualizer in your browser",
+        help="Run the classic terminal analysis dashboard with opt-in JSON/HTML exports",
     )
     parser.add_argument(
         "--json",
@@ -872,6 +933,22 @@ def main():
         "--serve",
         action="store_true",
         help="Start the Karuvi daemon on the analyzed repository",
+    )
+    parser.add_argument(
+        "--export",
+        action="store_true",
+        help="Export repository analysis JSON + Living Codebase Atlas HTML to the repository root",
+    )
+    parser.add_argument(
+        "--open",
+        action="store_true",
+        help="Auto-serve the exported atlas HTML over local HTTP and open it in the browser",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for auto-serving the atlas HTML (default: 8000)",
     )
     parser.add_argument(
         "--verbose",
@@ -996,7 +1073,6 @@ def main():
         or args.arch_json
         or args.arch_doc
         or args.onboard
-        or args.explore
     )
     if needs_arch_model:
         from architecture.analyzer import ArchitectureAnalyzer
@@ -1025,18 +1101,6 @@ def main():
             plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
             render_onboarding_course(plan, level=args.level)
 
-
-
-        if args.explore:
-            import webbrowser
-            atlas_path = Path(args.html) if args.html else (repo_path / "karuvi_atlas.html")
-            export_html_graph(builder, atlas_path, arch_model=arch_model)
-            try:
-                webbrowser.open(atlas_path.as_uri())
-                console.print("[dim green]Opened Living Codebase Atlas in default web browser.[/dim green]")
-            except Exception:
-                pass
-
     if args.interactive:
         interactive_menu(repo_path, parsed_modules, global_index, builder)
         return
@@ -1051,36 +1115,60 @@ def main():
         or args.chart
         or args.architecture
         or args.onboard
-        or args.explore
+        or args.export
     )
-
-    # If no specific inspection flag was provided, display dashboard
-    if not has_specific_flag:
-        display_dashboard(repo_path, parsed_modules, builder)
 
     # Handle outputs
     json_path = Path(args.json) if args.json else None
     html_path = Path(args.html) if args.html else None
 
-    # If neither flag was provided and running interactively in terminal without specific action flags, offer to save
-    if not has_specific_flag and not json_path and not html_path and sys.stdin.isatty():
-        try:
-            choice = input("\nSave analysis outputs? ([j]son / [h]tml / [b]oth / [n]one) [b]: ").strip().lower()
-            if choice in ("", "b", "both"):
-                json_path = repo_path / "karuvi_analysis.json"
-                html_path = repo_path / "karuvi_atlas.html"
-            elif choice in ("j", "json"):
-                json_path = repo_path / "karuvi_analysis.json"
-            elif choice in ("h", "html"):
-                html_path = repo_path / "karuvi_atlas.html"
-        except (KeyboardInterrupt, EOFError):
-            pass
+    # --explore now runs the classic terminal dashboard (the former default).
+    classic_run = args.explore and not has_specific_flag
+    if classic_run:
+        display_dashboard(repo_path, parsed_modules, builder)
+        # If neither flag was provided and running interactively, offer to save
+        if not json_path and not html_path and sys.stdin.isatty():
+            try:
+                choice = input("\nSave analysis outputs? ([j]son / [h]tml / [b]oth / [n]one) [b]: ").strip().lower()
+                if choice in ("", "b", "both"):
+                    json_path = repo_path / "karuvi_analysis.json"
+                    html_path = repo_path / "karuvi_atlas.html"
+                elif choice in ("j", "json"):
+                    json_path = repo_path / "karuvi_analysis.json"
+                elif choice in ("h", "html"):
+                    html_path = repo_path / "karuvi_atlas.html"
+            except (KeyboardInterrupt, EOFError):
+                pass
 
-    if json_path:
-        export_full_json(repo_path, parsed_modules, builder, json_path)
+    if args.export:
+        if json_path is None:
+            json_path = repo_path / "karuvi_analysis.json"
+        if html_path is None:
+            html_path = repo_path / "karuvi_atlas.html"
 
-    if html_path and not args.explore:
-        export_html_graph(builder, html_path, arch_model=arch_model)
+    # New default: no flags at all → export the Atlas and auto-serve it over HTTP
+    bare_run = (
+        not has_specific_flag
+        and not args.explore
+        and json_path is None
+        and html_path is None
+    )
+    if bare_run:
+        atlas_path = html_path if html_path is not None else (repo_path / "karuvi_atlas.html")
+        export_outputs(repo_path, parsed_modules, builder, arch_model=arch_model, html_path=atlas_path)
+        serve_and_open(atlas_path, port=args.port)
+    else:
+        export_outputs(
+            repo_path,
+            parsed_modules,
+            builder,
+            arch_model=arch_model,
+            json_path=json_path,
+            html_path=html_path,
+        )
+
+    if args.export and args.open and html_path is not None:
+        serve_and_open(html_path, port=args.port)
 
     if args.mermaid:
         console.print("\n[bold]Mermaid Graph:[/bold]\n")
