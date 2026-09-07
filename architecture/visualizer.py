@@ -1251,6 +1251,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       .graph-canvas-container { background: #101010; }
       .graph-floating-controls { background: rgba(20,20,20,.94); border-color: #333; border-radius: 5px; backdrop-filter: none; }
       .pill-opt.active { background: #bdbdbd; color: #111; }
+      #graph-role-filters .pill-opt { display: inline-flex; align-items: center; transition: all 0.15s ease; }
+      #graph-role-filters .pill-opt.active { background: #2a2a2a !important; color: #fff !important; box-shadow: 0 0 0 1px #555; }
+      #graph-role-filters .pill-opt[data-role="ENTRY_CANDIDATE"].active { background: rgba(6, 182, 212, 0.2) !important; color: #22d3ee !important; box-shadow: 0 0 0 1px #06b6d4; }
+      #graph-role-filters .pill-opt[data-role="CYCLE"].active { background: rgba(244, 63, 94, 0.2) !important; color: #fb7185 !important; box-shadow: 0 0 0 1px #f43f5e; }
+      #graph-role-filters .pill-opt[data-role="HUB"].active { background: rgba(192, 132, 252, 0.2) !important; color: #d8b4fe !important; box-shadow: 0 0 0 1px #c084fc; }
+      #graph-role-filters .pill-opt[data-role="BRIDGE"].active { background: rgba(245, 158, 11, 0.2) !important; color: #fbbf24 !important; box-shadow: 0 0 0 1px #f59e0b; }
+      #graph-role-filters .pill-opt[data-role="LEAF"].active { background: rgba(16, 185, 129, 0.2) !important; color: #34d399 !important; box-shadow: 0 0 0 1px #10b981; }
       .graph-inspector, .file-tree-pane, .ast-tree-pane, .code-viewer-header { background: #151515; }
       .file-tree-item { border-radius: 4px; }
       .file-tree-item:hover { background: #1f1f1f; }
@@ -1359,17 +1366,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <input type="text" id="graph-text-filter" placeholder="Filter nodes (regex)..." style="background: var(--bg-surface); border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; width: 160px;">
                 <div style="display: flex; gap: 4px; align-items: center; margin-left: 8px;" id="graph-role-filters">
                   <span class="pill-opt active" data-role="ALL">All</span>
-                  <span class="pill-opt" data-role="ENTRY_CANDIDATE">Entry</span>
-                  <span class="pill-opt" data-role="CYCLE">Cycle</span>
-                  <span class="pill-opt" data-role="HUB">Hub</span>
-                  <span class="pill-opt" data-role="BRIDGE">Bridge</span>
-                  <span class="pill-opt" data-role="LEAF">Leaf</span>
+                  <span class="pill-opt" data-role="ENTRY_CANDIDATE"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#06b6d4;margin-right:5px;"></span>Entry</span>
+                  <span class="pill-opt" data-role="CYCLE"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f43f5e;margin-right:5px;"></span>Cycle</span>
+                  <span class="pill-opt" data-role="HUB"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#c084fc;margin-right:5px;"></span>Hub</span>
+                  <span class="pill-opt" data-role="BRIDGE"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-right:5px;"></span>Bridge</span>
+                  <span class="pill-opt" data-role="LEAF"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;margin-right:5px;"></span>Leaf</span>
                 </div>
               </div>
-              <div class="filter-checkboxes">
-                <label><input type="checkbox" id="chk-filter-calls" checked> Calls</label>
-                <label><input type="checkbox" id="chk-filter-imports" checked> Imports</label>
-                <label><input type="checkbox" id="chk-filter-refs" checked> References</label>
+              <div class="filter-checkboxes" style="display: flex; gap: 12px; align-items: center; margin-left: 8px;">
+                <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-calls" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#38bdf8;"></span>Calls</label>
+                <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-imports" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#c084fc;"></span>Imports</label>
+                <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer;"><input type="checkbox" id="chk-filter-refs" checked> <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#34d399;"></span>References</label>
               </div>
             </div>
             <div id="network-canvas"></div>
@@ -1666,10 +1673,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         let uuid = '';
         if (node.variable && node.variable.uuid) {
            uuid = node.variable.uuid;
-        } else if (nameRaw.includes('id=')) {
-           const match = nameRaw.match(/id=([a-f0-9\-]+)/);
-           if (match) uuid = match[1];
-        }
+         } else if (nameRaw.includes('id=')) {
+            const match = nameRaw.match(/id=([a-f0-9-]+)/);
+            if (match) uuid = match[1];
+         }
 
         let displayName = (node.variable && node.variable.name) ? node.variable.name : nameRaw;
 
@@ -1898,7 +1905,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       };
 
       // -------------------------------------------------------------
-      // 5. Graph Explorer with Unrelated Node Greying
+      // 5. Graph Explorer with Unrelated Node Greying & Role/Edge Color Coding
       // -------------------------------------------------------------
       let network = null;
       let currentLevel = 'modules';
@@ -1906,6 +1913,76 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       let selectedNodeId = null;
 
       const container = document.getElementById('network-canvas');
+
+      const cyclesSet = new Set();
+      (data.cycles || []).forEach(cycle => cycle.forEach(m => cyclesSet.add(m)));
+
+      function getModuleRoleColors(role, isInCycle) {
+        if (isInCycle || role === 'CYCLE_MEMBER') {
+          return {
+            border: '#f43f5e',
+            background: '#330a14',
+            text: '#ffe4e6',
+            highlightBorder: '#fb7185',
+            highlightBg: '#5c0b1f',
+            hoverBorder: '#fda4af',
+            hoverBg: '#450a18'
+          };
+        }
+        switch (role) {
+          case 'ENTRY_CANDIDATE':
+            return {
+              border: '#06b6d4',
+              background: '#082536',
+              text: '#cffafe',
+              highlightBorder: '#22d3ee',
+              highlightBg: '#0e4a66',
+              hoverBorder: '#67e8f9',
+              hoverBg: '#0b3952'
+            };
+          case 'HUB':
+            return {
+              border: '#c084fc',
+              background: '#280c42',
+              text: '#fae8ff',
+              highlightBorder: '#d8b4fe',
+              highlightBg: '#501784',
+              hoverBorder: '#e9d5ff',
+              hoverBg: '#3d1265'
+            };
+          case 'BRIDGE':
+            return {
+              border: '#f59e0b',
+              background: '#361b05',
+              text: '#fef3c7',
+              highlightBorder: '#fbbf24',
+              highlightBg: '#663309',
+              hoverBorder: '#fde68a',
+              hoverBg: '#4e2607'
+            };
+          case 'LEAF':
+            return {
+              border: '#10b981',
+              background: '#072e21',
+              text: '#d1fae5',
+              highlightBorder: '#34d399',
+              highlightBg: '#0c583f',
+              hoverBorder: '#6ee7b7',
+              hoverBg: '#094431'
+            };
+          case 'INTERMEDIARY':
+          default:
+            return {
+              border: '#38bdf8',
+              background: '#0f1f38',
+              text: '#f0f9ff',
+              highlightBorder: '#60a5fa',
+              highlightBg: '#1e3f73',
+              hoverBorder: '#93c5fd',
+              hoverBg: '#173059'
+            };
+        }
+      }
 
       function buildGraphDataSet(level) {
         const nodes = [];
@@ -1923,35 +2000,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 label: `${c.name}\\n(${c.modules.length} modules)`,
                 shape: 'box',
                 color: {
-                  background: '#152037',
-                  border: '#b8b8b8',
-                  highlight: { background: '#1d4ed8', border: '#60a5fa' }
+                  background: '#0e1e38',
+                  border: '#38bdf8',
+                  highlight: { background: '#1d4ed8', border: '#60a5fa' },
+                  hover: { background: '#173059', border: '#38bdf8' }
                 },
                 font: { color: '#f8fafc', face: 'Inter', size: 14, bold: true },
                 margin: 12,
                 borderWidth: 2,
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 6, x: 0, y: 2 }
               });
             } else {
               (c.modules || []).forEach(mId => {
                 const mod = (data.modules || []).find(m => m.id === mId);
+                const inCycle = cyclesSet.has(mId) || (mod && mod.role === 'CYCLE_MEMBER');
                 const role = mod ? mod.role : 'MODULE';
-                let bColor = '#b8b8b8';
-                if (role === 'BRIDGE') bColor = '#969696';
-                else if (role === 'HUB') bColor = '#a0a0a0';
-                else if (role === 'LEAF') bColor = '#b0b0b0';
+                const col = getModuleRoleColors(role, inCycle);
 
                 nodes.push({
                   id: `mod:${mId}`,
                   label: mId.split('/').pop(),
+                  title: `${mId}\\nRole: ${inCycle ? 'CYCLE_MEMBER' : role}`,
                   shape: 'box',
                   color: {
-                    background: '#090d16',
-                    border: bColor,
-                    highlight: { background: '#1e293b', border: '#fff' }
+                    background: col.background,
+                    border: col.border,
+                    highlight: { background: col.highlightBg, border: col.highlightBorder },
+                    hover: { background: col.hoverBg, border: col.hoverBorder }
                   },
-                  font: { color: '#e2e8f0', face: 'Fira Code', size: 11 },
+                  font: { color: col.text, face: 'Fira Code', size: 11, bold: true },
                   margin: 8,
-                  borderWidth: 1.5,
+                  borderWidth: 2,
+                  shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 5, x: 0, y: 2 }
                 });
               });
             }
@@ -1964,9 +2044,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               edges.push({
                 from: `comp:${e.source}`,
                 to: `comp:${e.target}`,
-                arrows: 'to',
-                color: { color: 'rgba(184,184,184,0.4)', highlight: '#b8b8b8' },
-                width: Math.min(6, Math.max(1, Math.log2((e.weight || 1) + 1))),
+                arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+                color: { color: 'rgba(56, 189, 248, 0.45)', highlight: '#38bdf8', hover: '#38bdf8' },
+                width: Math.min(6, Math.max(1.5, Math.log2((e.weight || 1) + 1) * 1.5)),
               });
             }
           });
@@ -1976,34 +2056,40 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               edges.push({
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
-                arrows: 'to',
-                color: { color: 'rgba(148, 163, 184, 0.3)', highlight: '#b8b8b8' },
-                width: 1,
+                arrows: { to: { enabled: true, scaleFactor: 0.75 } },
+                color: { color: 'rgba(129, 140, 248, 0.45)', highlight: '#818cf8', hover: '#818cf8' },
+                width: 1.2,
               });
             });
           }
 
         } else if (level === 'modules') {
           (data.modules || []).forEach(m => {
-            let bColor = '#b8b8b8';
-            if (m.role === 'BRIDGE') bColor = '#969696';
-            else if (m.role === 'HUB') bColor = '#a0a0a0';
-            else if (m.role === 'LEAF') bColor = '#b0b0b0';
-            else if (m.role === 'CYCLE_MEMBER') bColor = '#7a7a7a';
-            else if (m.role === 'ENTRY_CANDIDATE') bColor = '#c4c4c4';
+            const inCycle = cyclesSet.has(m.id) || m.role === 'CYCLE_MEMBER';
+            const roleKey = inCycle ? 'CYCLE_MEMBER' : (m.role || 'MODULE');
+            const col = getModuleRoleColors(roleKey, inCycle);
 
             nodes.push({
               id: `mod:${m.id}`,
               label: m.path.split('/').pop(),
+              title: `${m.path}\\nRole: ${roleKey}\\nIn: ${m.in_degree || 0} | Out: ${m.out_degree || 0}`,
               shape: 'box',
               color: {
-                background: '#0f172a',
-                border: bColor,
-                highlight: { background: '#1e293b', border: '#fff' }
+                background: col.background,
+                border: col.border,
+                highlight: { background: col.highlightBg, border: col.highlightBorder },
+                hover: { background: col.hoverBg, border: col.hoverBorder }
               },
-              font: { color: '#f8fafc', face: 'Fira Code', size: 12 },
-              margin: 8,
-              borderWidth: 1.5,
+              font: { color: col.text, face: "'Fira Code', monospace", size: 12, bold: true },
+              margin: 9,
+              borderWidth: 2,
+              shadow: {
+                enabled: true,
+                color: 'rgba(0, 0, 0, 0.6)',
+                size: 6,
+                x: 0,
+                y: 2
+              }
             });
           });
 
@@ -2014,12 +2100,45 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const isRef = Boolean(types.REFERENCE);
 
             if ((isCall && filterCalls) || (isImport && filterImports) || (isRef && filterRefs) || (!isCall && !isImport && !isRef)) {
+              let edgeColor = 'rgba(56, 189, 248, 0.45)';
+              let highlightColor = '#38bdf8';
+
+              if (isCall && !isImport && !isRef) {
+                edgeColor = 'rgba(56, 189, 248, 0.55)';
+                highlightColor = '#38bdf8';
+              } else if (isImport && !isCall && !isRef) {
+                edgeColor = 'rgba(192, 132, 252, 0.55)';
+                highlightColor = '#c084fc';
+              } else if (isRef && !isCall && !isImport) {
+                edgeColor = 'rgba(52, 211, 153, 0.55)';
+                highlightColor = '#34d399';
+              } else if (isCall && isImport) {
+                edgeColor = 'rgba(129, 140, 248, 0.65)';
+                highlightColor = '#818cf8';
+              } else {
+                edgeColor = 'rgba(56, 189, 248, 0.45)';
+                highlightColor = '#38bdf8';
+              }
+
+              const relNames = [];
+              if (isCall) relNames.push('CALL');
+              if (isImport) relNames.push('IMPORT');
+              if (isRef) relNames.push('REFERENCE');
+              const relLabel = relNames.join(' + ') || 'DEPENDENCY';
+
               edges.push({
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
-                arrows: 'to',
-                color: { color: 'rgba(184,184,184,0.35)', highlight: '#b8b8b8' },
-                width: Math.min(5, Math.max(1, e.weight || 1)),
+                arrows: {
+                  to: { enabled: true, scaleFactor: 0.75 }
+                },
+                color: {
+                  color: edgeColor,
+                  highlight: highlightColor,
+                  hover: highlightColor
+                },
+                width: Math.min(5, Math.max(1.2, Math.log2((e.weight || 1) + 1) * 1.5)),
+                title: `${e.source.split('/').pop()} ➔ ${e.target.split('/').pop()} [${relLabel}]`
               });
             }
           });
@@ -2038,8 +2157,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 id: srcNodeId,
                 label: `${xr.source_file.split('/').pop()}\\n${xr.scope || 'call'}()`,
                 shape: 'ellipse',
-                color: { background: '#152037', border: '#b8b8b8' },
-                font: { color: '#e2e8f0', size: 10 },
+                color: { background: '#0e1e38', border: '#38bdf8', highlight: { background: '#1d4ed8', border: '#60a5fa' } },
+                font: { color: '#e0f2fe', size: 10 },
               });
             }
             if (!symbolNodesSet.has(tgtNodeId)) {
@@ -2048,16 +2167,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 id: tgtNodeId,
                 label: `${xr.target_file.split('/').pop()}\\n ${xr.symbol}`,
                 shape: 'box',
-                color: { background: '#090d16', border: '#b0b0b0' },
-                font: { color: '#b0b0b0', face: 'Fira Code', size: 10 },
+                color: { background: '#072e21', border: '#10b981', highlight: { background: '#0c583f', border: '#34d399' } },
+                font: { color: '#34d399', face: 'Fira Code', size: 10 },
               });
             }
 
             symbolEdges.push({
               from: srcNodeId,
               to: tgtNodeId,
-              arrows: 'to',
-              color: { color: 'rgba(176,176,176,0.4)' },
+              arrows: { to: { enabled: true, scaleFactor: 0.75 } },
+              color: { color: 'rgba(52, 211, 153, 0.5)', highlight: '#34d399', hover: '#34d399' },
             });
           });
 
@@ -2111,8 +2230,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 
       let currentRoleFilter = 'ALL';
-      const cyclesSet = new Set();
-      (data.cycles || []).forEach(cycle => cycle.forEach(m => cyclesSet.add(m)));
 
       document.querySelectorAll('#graph-role-filters .pill-opt').forEach(pill => {
         pill.addEventListener('click', () => {
