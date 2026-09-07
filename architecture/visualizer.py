@@ -1634,7 +1634,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             left: -12px;
             width: 12px;
             height: 1px;
-            border-top: 1px solid rgba(255,255,255,0.15);
+            border-top: 1px solid var(--branch-color, rgba(255,255,255,0.25));
             z-index: 1;
           }
           .ast-badge {
@@ -1749,7 +1749,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         if ((node.children && node.children.length > 0) || depsStr || uuid) {
           html += `
-            <div class="${isRoot ? '' : 'ast-item-wrapper'}">
+            <div class="${isRoot ? '' : 'ast-item-wrapper'}" ${isRoot ? '' : `style="--branch-color: ${badgeBorder};"`}>
               <details class="ast-node" style="margin-top: ${isRoot ? '0' : '2px'};" >
                 <summary class="ast-summary">
                   <div style="display: inline-flex; align-items: center; vertical-align: middle;">
@@ -1758,7 +1758,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                       ${lineLoc}
                   </div>
                 </summary>
-                <div class="ast-children">
+                <div class="ast-children" style="border-left-color: ${badgeBorder}77;">
                   ${uuidHtml}
                   ${depsStr}
                   ${(node.children || []).map(c => renderASTNode(c, depth + 1)).join('')}
@@ -1768,7 +1768,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           `;
         } else {
           html += `
-            <div class="${isRoot ? '' : 'ast-item-wrapper'}">
+            <div class="${isRoot ? '' : 'ast-item-wrapper'}" ${isRoot ? '' : `style="--branch-color: ${badgeBorder};"`}>
               <div class="ast-node" style="margin-top: ${isRoot ? '0' : '2px'}; padding: 2px 4px;">
                 <div style="display: flex; align-items: center; width: 100%;">
                   ${badgeHtml}
@@ -1794,7 +1794,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div style="font-size: 11px; font-weight: 700; color: var(--accent-amber); text-transform: uppercase; padding: 4px 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
               <span style="font-size: 8px;">▼</span> ⬆️ UPSTREAM DEPENDENCIES (${(mod.outgoing_modules || []).length})
             </div>
-            <div style="padding-left: 10px;">
+            <div style="padding-left: 10px; border-left: 2px solid rgba(245, 158, 11, 0.3); margin-left: 4px;">
         `;
         if (mod.outgoing_modules && mod.outgoing_modules.length > 0) {
             mod.outgoing_modules.forEach(depId => {
@@ -1813,7 +1813,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div style="font-size: 11px; font-weight: 700; color: var(--accent-green); text-transform: uppercase; padding: 4px 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none';">
               <span style="font-size: 8px;">▼</span> ⬇️ DOWNSTREAM DEPENDENTS (${(mod.incoming_modules || []).length})
             </div>
-            <div style="padding-left: 10px;">
+            <div style="padding-left: 10px; border-left: 2px solid rgba(16, 185, 129, 0.3); margin-left: 4px;">
         `;
         if (mod.incoming_modules && mod.incoming_modules.length > 0) {
             mod.incoming_modules.forEach(depId => {
@@ -1984,7 +1984,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
       }
 
+      const edgeDefaultStyles = new Map();
+
       function buildGraphDataSet(level) {
+        edgeDefaultStyles.clear();
         const nodes = [];
         const edges = [];
         const filterCalls = document.getElementById('chk-filter-calls').checked;
@@ -2041,24 +2044,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const srcUnfolded = unfoldedComponents.has(e.source);
             const tgtUnfolded = unfoldedComponents.has(e.target);
             if (!srcUnfolded && !tgtUnfolded) {
+              const edgeId = `comp:${e.source}->comp:${e.target}`;
+              const defaultCol = { color: 'rgba(56, 189, 248, 0.45)', highlight: '#38bdf8', hover: '#38bdf8', inherit: 'from', opacity: 0.75 };
+              const defaultW = Math.min(6, Math.max(1.5, Math.log2((e.weight || 1) + 1) * 1.5));
+              edgeDefaultStyles.set(edgeId, { color: defaultCol, width: defaultW });
               edges.push({
+                id: edgeId,
                 from: `comp:${e.source}`,
                 to: `comp:${e.target}`,
                 arrows: { to: { enabled: true, scaleFactor: 0.8 } },
-                color: { color: 'rgba(56, 189, 248, 0.45)', highlight: '#38bdf8', hover: '#38bdf8' },
-                width: Math.min(6, Math.max(1.5, Math.log2((e.weight || 1) + 1) * 1.5)),
+                color: { ...defaultCol },
+                width: defaultW,
               });
             }
           });
 
           if (unfoldedComponents.size > 0) {
             (data.module_edges || []).forEach(e => {
+              const srcMod = (data.modules || []).find(m => m.id === e.source);
+              const srcInCycle = cyclesSet.has(e.source) || (srcMod && srcMod.role === 'CYCLE_MEMBER');
+              const srcRole = srcInCycle ? 'CYCLE_MEMBER' : (srcMod ? srcMod.role : 'MODULE');
+              const srcCol = getModuleRoleColors(srcRole, srcInCycle);
+              const edgeId = `unfolded:mod:${e.source}->mod:${e.target}`;
+              const defaultCol = { color: srcCol.border, highlight: srcCol.highlightBorder, hover: srcCol.hoverBorder, inherit: 'from', opacity: 0.75 };
+              const defaultW = 1.5;
+              edgeDefaultStyles.set(edgeId, { color: defaultCol, width: defaultW });
               edges.push({
+                id: edgeId,
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
                 arrows: { to: { enabled: true, scaleFactor: 0.75 } },
-                color: { color: 'rgba(129, 140, 248, 0.45)', highlight: '#818cf8', hover: '#818cf8' },
-                width: 1.2,
+                color: { ...defaultCol },
+                width: defaultW,
               });
             });
           }
@@ -2100,24 +2117,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const isRef = Boolean(types.REFERENCE);
 
             if ((isCall && filterCalls) || (isImport && filterImports) || (isRef && filterRefs) || (!isCall && !isImport && !isRef)) {
-              let edgeColor = 'rgba(56, 189, 248, 0.45)';
-              let highlightColor = '#38bdf8';
+              const srcMod = (data.modules || []).find(m => m.id === e.source);
+              const tgtMod = (data.modules || []).find(m => m.id === e.target);
+              const srcInCycle = cyclesSet.has(e.source) || (srcMod && srcMod.role === 'CYCLE_MEMBER');
+              const tgtInCycle = cyclesSet.has(e.target) || (tgtMod && tgtMod.role === 'CYCLE_MEMBER');
+              const srcRole = srcInCycle ? 'CYCLE_MEMBER' : (srcMod ? srcMod.role : 'MODULE');
+              const tgtRole = tgtInCycle ? 'CYCLE_MEMBER' : (tgtMod ? tgtMod.role : 'MODULE');
+              const srcCol = getModuleRoleColors(srcRole, srcInCycle);
 
-              if (isCall && !isImport && !isRef) {
-                edgeColor = 'rgba(56, 189, 248, 0.55)';
-                highlightColor = '#38bdf8';
-              } else if (isImport && !isCall && !isRef) {
-                edgeColor = 'rgba(192, 132, 252, 0.55)';
-                highlightColor = '#c084fc';
-              } else if (isRef && !isCall && !isImport) {
-                edgeColor = 'rgba(52, 211, 153, 0.55)';
-                highlightColor = '#34d399';
-              } else if (isCall && isImport) {
-                edgeColor = 'rgba(129, 140, 248, 0.65)';
-                highlightColor = '#818cf8';
-              } else {
-                edgeColor = 'rgba(56, 189, 248, 0.45)';
-                highlightColor = '#38bdf8';
+              // Connecting lines colored accordingly to node role & cycle status
+              let edgeColor = srcCol.border;
+              let highlightColor = srcCol.highlightBorder;
+              let hoverColor = srcCol.hoverBorder;
+
+              // Prominently highlight circular dependency loops
+              if (srcInCycle && tgtInCycle) {
+                edgeColor = '#f43f5e';
+                highlightColor = '#fb7185';
+                hoverColor = '#fda4af';
               }
 
               const relNames = [];
@@ -2126,19 +2143,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               if (isRef) relNames.push('REFERENCE');
               const relLabel = relNames.join(' + ') || 'DEPENDENCY';
 
+              const edgeId = `mod:${e.source}->mod:${e.target}`;
+              const defaultCol = {
+                color: edgeColor,
+                highlight: highlightColor,
+                hover: hoverColor,
+                inherit: 'from',
+                opacity: 0.75
+              };
+              const defaultW = (srcInCycle && tgtInCycle) ? 2.5 : Math.min(5, Math.max(1.3, Math.log2((e.weight || 1) + 1) * 1.5));
+              edgeDefaultStyles.set(edgeId, { color: defaultCol, width: defaultW });
+
               edges.push({
+                id: edgeId,
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
                 arrows: {
-                  to: { enabled: true, scaleFactor: 0.75 }
+                  to: { enabled: true, scaleFactor: 0.8 }
                 },
-                color: {
-                  color: edgeColor,
-                  highlight: highlightColor,
-                  hover: highlightColor
-                },
-                width: Math.min(5, Math.max(1.2, Math.log2((e.weight || 1) + 1) * 1.5)),
-                title: `${e.source.split('/').pop()} ➔ ${e.target.split('/').pop()} [${relLabel}]`
+                color: { ...defaultCol },
+                width: defaultW,
+                title: `${e.source.split('/').pop()} (${srcRole}) ➔ ${e.target.split('/').pop()} (${tgtRole}) [${relLabel}]`
               });
             }
           });
@@ -2172,11 +2197,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               });
             }
 
+            const edgeId = `sym:${srcNodeId}->${tgtNodeId}`;
+            const defaultCol = { color: 'rgba(52, 211, 153, 0.5)', highlight: '#34d399', hover: '#34d399', inherit: 'from', opacity: 0.75 };
+            const defaultW = 1.0;
+            edgeDefaultStyles.set(edgeId, { color: defaultCol, width: defaultW });
+
             symbolEdges.push({
+              id: edgeId,
               from: srcNodeId,
               to: tgtNodeId,
               arrows: { to: { enabled: true, scaleFactor: 0.75 } },
-              color: { color: 'rgba(52, 211, 153, 0.5)', highlight: '#34d399', hover: '#34d399' },
+              color: { ...defaultCol },
+              width: defaultW,
             });
           });
 
@@ -2217,6 +2249,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                   const mId = clickedId.replace('mod:', '');
                   window.selectModule(mId);
               }
+              applyUnrelatedNodeGreying(clickedId);
             } else {
               selectedNodeId = null;
               applyTextFilter();
@@ -2255,7 +2288,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           }
         }
 
+        const isFilterActive = (currentRoleFilter !== 'ALL') || Boolean(query);
         const allNodes = network.body.data.nodes.get();
+        const matchingNodeIds = new Set();
         const updates = allNodes.map(n => {
           let matchesQuery = true;
           let matchesRole = true;
@@ -2274,20 +2309,74 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const mId = n.id.replace('mod:', '');
             const mod = (data.modules || []).find(m => m.id === mId);
             if (currentRoleFilter === 'CYCLE') {
-              if (!cyclesSet.has(mId)) matchesRole = false;
+              if (!cyclesSet.has(mId) && (!mod || mod.role !== 'CYCLE_MEMBER')) matchesRole = false;
             } else if (mod && mod.role !== currentRoleFilter) {
               matchesRole = false;
             }
           }
 
           if (matchesQuery && matchesRole) {
+            matchingNodeIds.add(n.id);
             return { id: n.id, opacity: 1.0 };
           } else {
             return { id: n.id, opacity: 0.12 };
           }
         });
         network.body.data.nodes.update(updates);
+
+        // Grey out connecting wires of others!
+        const allEdges = network.body.data.edges.get();
+        const edgeUpdates = allEdges.map(e => {
+          const defaults = edgeDefaultStyles.get(e.id) || {
+            color: { inherit: 'from', opacity: 0.75 },
+            width: 1.3
+          };
+
+          if (!isFilterActive) {
+            return {
+              id: e.id,
+              color: { ...defaults.color },
+              width: defaults.width
+            };
+          }
+
+          const fromMatches = matchingNodeIds.has(e.from);
+          const toMatches = matchingNodeIds.has(e.to);
+
+          let edgeMatches = false;
+          if (currentRoleFilter === 'CYCLE') {
+            edgeMatches = fromMatches && toMatches;
+          } else if (currentRoleFilter === 'ENTRY_CANDIDATE') {
+            edgeMatches = fromMatches;
+          } else if (currentRoleFilter === 'LEAF') {
+            edgeMatches = toMatches;
+          } else {
+            edgeMatches = fromMatches || toMatches;
+          }
+
+          if (edgeMatches) {
+            return {
+              id: e.id,
+              color: { ...defaults.color },
+              width: defaults.width
+            };
+          } else {
+            return {
+              id: e.id,
+              color: {
+                color: 'rgba(100, 100, 100, 0.06)',
+                highlight: 'rgba(100, 100, 100, 0.15)',
+                hover: 'rgba(100, 100, 100, 0.15)',
+                inherit: false,
+                opacity: 0.06
+              },
+              width: 1
+            };
+          }
+        });
+        network.body.data.edges.update(edgeUpdates);
       }
+
       function applyUnrelatedNodeGreying(focusNodeId) {
         if (!network) return;
         const connectedNodes = new Set(network.getConnectedNodes(focusNodeId));
@@ -2302,6 +2391,34 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           }
         });
         network.body.data.nodes.update(updates);
+
+        const allEdges = network.body.data.edges.get();
+        const edgeUpdates = allEdges.map(e => {
+          const defaults = edgeDefaultStyles.get(e.id) || {
+            color: { inherit: 'from', opacity: 0.75 },
+            width: 1.3
+          };
+          if (e.from === focusNodeId || e.to === focusNodeId) {
+            return {
+              id: e.id,
+              color: { ...defaults.color, opacity: 1.0 },
+              width: Math.max(defaults.width, 2)
+            };
+          } else {
+            return {
+              id: e.id,
+              color: {
+                color: 'rgba(100, 100, 100, 0.06)',
+                highlight: 'rgba(100, 100, 100, 0.15)',
+                hover: 'rgba(100, 100, 100, 0.15)',
+                inherit: false,
+                opacity: 0.06
+              },
+              width: 1
+            };
+          }
+        });
+        network.body.data.edges.update(edgeUpdates);
       }
 
       function resetNodeOpacities() {
@@ -2309,6 +2426,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const allNodes = network.body.data.nodes.get();
         const updates = allNodes.map(n => ({ id: n.id, opacity: 1.0 }));
         network.body.data.nodes.update(updates);
+
+        const allEdges = network.body.data.edges.get();
+        const edgeUpdates = allEdges.map(e => {
+          const defaults = edgeDefaultStyles.get(e.id) || {
+            color: { inherit: 'from', opacity: 0.75 },
+            width: 1.3
+          };
+          return {
+            id: e.id,
+            color: { ...defaults.color },
+            width: defaults.width
+          };
+        });
+        network.body.data.edges.update(edgeUpdates);
       }
 
       function updateNetworkData() {
