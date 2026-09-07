@@ -4,10 +4,10 @@ Karuvi Living Codebase Atlas — Unified Web Visualizer
 
 Generates a standalone, interactive, dark-mode Single Page Web Application
 embodying Karuvi's 6 core modes:
-1. ◉ Overview: Executive codebase dashboard, vital metrics, and circular loop radar.
-3. 🏛️ Architecture: Discovered components, confidence scores, and architectural flows.
-4. 🕸️ Graph Explorer: Progressive graph disclosure, relation filters, and unrelated node greying.
-5. 📁 Code Explorer: Sourcetrail-grade side-by-side file tree and syntax-highlighted code viewer.
+1. Overview: Executive codebase dashboard, vital metrics, and circular loop radar.
+3. Architecture: Discovered components, confidence scores, and architectural flows.
+4. Graph Explorer: Progressive graph disclosure, relation filters, and unrelated node greying.
+5. Code Explorer: Sourcetrail-grade side-by-side file tree and syntax-highlighted code viewer.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from typing import Any
 from architecture.analyzer import ArchitectureAnalyzer
 from architecture.documentation import generate_architecture_markdown
 from architecture.models import ArchitectureModel
+from architecture.module_graph import normalize_module_path
 
 
 def build_unified_payload(
@@ -42,9 +43,14 @@ def build_unified_payload(
         components_list.append(c_dict)
 
     # 2. Module list with enhanced architectural metadata and source code
+    raw_nodes = getattr(repo_builder, "nodes", {}) or {}
+    normalized_nodes = {
+        normalize_module_path(k, repo_root): v for k, v in raw_nodes.items()
+    }
+
     modules_list = []
     for mod_id, mod in arch_model.modules.items():
-        node_raw = repo_builder.nodes.get(mod_id) if repo_builder else None
+        node_raw = normalized_nodes.get(mod_id)
         line_count = node_raw.line_count if node_raw else 0
         fn_count = node_raw.function_count if node_raw else 0
         cls_count = node_raw.class_count if node_raw else 0
@@ -213,7 +219,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Google Fonts & Vis-Network -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Glacial+Indifference:wght@400;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
   <style>
@@ -233,18 +239,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       --text-heading: #ffffff;
       
       /* Maintained Graph Colors */
-      --accent-blue: #38bdf8;
-      --accent-cyan: #22d3ee;
-      --accent-purple: #c084fc;
-      --accent-green: #10b981;
-      --accent-amber: #f59e0b;
-      --accent-rose: #f43f5e;
+      --accent-blue: #b8b8b8;
+      --accent-cyan: #c4c4c4;
+      --accent-purple: #a0a0a0;
+      --accent-green: #b0b0b0;
+      --accent-amber: #969696;
+      --accent-rose: #7a7a7a;
       
-      --role-entry: #38bdf8;
-      --role-bridge: #f59e0b;
-      --role-hub: #c084fc;
-      --role-leaf: #10b981;
-      --role-cycle: #f43f5e;
+      --role-entry: #b8b8b8;
+      --role-bridge: #969696;
+      --role-hub: #a0a0a0;
+      --role-leaf: #b0b0b0;
+      --role-cycle: #7a7a7a;
       --role-isolated: #777777;
       
       /* Shadows for elevation */
@@ -252,9 +258,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       --shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
       
       /* Typography */
-      --font-display: 'Glacial Indifference', 'Google Sans', 'Source Sans 3', sans-serif;
-      --font-body: 'Source Sans 3', 'Open Sans', sans-serif;
-      --font-mono: 'Fira Code', 'Monaco', monospace;
+      --font-display: 'Inter', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -291,7 +297,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       font-weight: 700; font-family: var(--font-display);
       font-size: 17px;
       letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
+      color: var(--text-heading);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       display: flex;
@@ -487,8 +493,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     /* Entry Point Banner */
     .banner-entrypoint {
-      background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
-      border: 1px solid rgba(56, 189, 248, 0.25);
+      background: linear-gradient(135deg, rgba(184,184,184,0.08) 0%, rgba(160,160,160,0.08) 100%);
+      border: 1px solid rgba(184,184,184,0.25);
       border-radius: 10px;
       padding: 18px 22px;
       margin-bottom: 28px;
@@ -539,7 +545,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     .btn-primary:hover {
-      background: #7dd3fc;
+      background: #d0d0d0;
       transform: translateY(-1px);
     }
 
@@ -573,8 +579,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     /* Radar / Alert Cards */
     .alert-card {
-      background: rgba(244, 63, 94, 0.08);
-      border: 1px solid rgba(244, 63, 94, 0.3);
+      background: rgba(120,120,120,0.08);
+      border: 1px solid rgba(120,120,120,0.3);
       border-radius: 8px;
       padding: 14px 18px;
       margin-bottom: 24px;
@@ -582,9 +588,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       line-height: 1.6;
     }
     .alert-card.warning {
-      background: rgba(245, 158, 11, 0.08);
-      border-color: rgba(245, 158, 11, 0.3);
-      color: #fde68a;
+      background: rgba(150,150,150,0.08);
+      border-color: rgba(150,150,150,0.3);
+      color: #c8c8c8;
     }
 
     /* Architecture Components Grid */
@@ -631,9 +637,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       font-family: 'Fira Code', monospace;
       font-weight: 600;
     }
-    .confidence-high { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
-    .confidence-med { background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
-    .confidence-low { background: rgba(244, 63, 94, 0.15); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+    .confidence-high { background: rgba(176,176,176,0.15); color: var(--accent-green); border: 1px solid rgba(176,176,176,0.3); }
+    .confidence-med { background: rgba(150,150,150,0.15); color: var(--accent-amber); border: 1px solid rgba(150,150,150,0.3); }
+    .confidence-low { background: rgba(120,120,120,0.15); color: var(--accent-rose); border: 1px solid rgba(120,120,120,0.3); }
 
     .comp-modules-list {
       font-size: 11px;
@@ -736,7 +742,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .step-item-card.active {
       background: var(--bg-card);
       border-color: var(--accent-blue);
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+      box-shadow: 0 0 10px rgba(184,184,184,0.15);
     }
 
     .step-item-card.completed .step-title-text {
@@ -1030,10 +1036,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     /* Syntax highlight colors */
-    .syntax-kw { color: #f43f5e; font-weight: 600; }
-    .syntax-fn { color: #38bdf8; font-weight: 600; }
-    .syntax-cls { color: #c084fc; font-weight: 600; }
-    .syntax-str { color: #10b981; }
+    .syntax-kw { color: #7a7a7a; font-weight: 600; }
+    .syntax-fn { color: #b8b8b8; font-weight: 600; }
+    .syntax-cls { color: #a0a0a0; font-weight: 600; }
+    .syntax-str { color: #b0b0b0; }
     .syntax-cmt { color: #64748b; font-style: italic; }
 
     
@@ -1195,6 +1201,70 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       font-size: 12px;
       color: var(--text);
     }
+      /* Minimal monochrome visual system */
+      :root {
+        --bg-canvas: #101010;
+        --bg-surface: #171717;
+        --bg-card: #202020;
+        --bg-card-hover: #292929;
+        --border: #303030;
+        --border-subtle: #242424;
+        --border-glow: #4a4a4a;
+        --text: #e7e7e7;
+        --text-secondary: #a6a6a6;
+        --text-muted: #707070;
+        --text-heading: #f2f2f2;
+        --accent-blue: #b8b8b8;
+        --accent-cyan: #c4c4c4;
+        --accent-purple: #a0a0a0;
+        --accent-green: #b0b0b0;
+        --accent-amber: #969696;
+        --accent-rose: #7a7a7a;
+      }
+      html { background: #101010; }
+      body { letter-spacing: -0.01em; }
+      header { height: 56px; background: #151515; border-bottom-color: #2b2b2b; padding: 0 22px; }
+      .brand-logo { font-family: var(--font-body); font-size: 14px; letter-spacing: .08em; color: #ededed; background: none; -webkit-text-fill-color: initial; }
+      .repo-pill { background: transparent; border: 0; border-left: 1px solid #363636; border-radius: 0; color: #8f8f8f; }
+      .search-trigger-btn { background: #1b1b1b; border-color: #303030; border-radius: 5px; }
+      .search-trigger-btn:hover { border-color: #505050; color: #ededed; }
+      nav.sidebar { width: 208px; background: #151515; border-right-color: #2b2b2b; padding: 18px 10px; }
+      .nav-section-label { font-size: 10px; letter-spacing: .12em; font-weight: 600; }
+      .nav-item { border-radius: 4px; padding: 8px 10px; color: #929292; }
+      .nav-item:hover { background: #1d1d1d; color: #ddd; }
+      .nav-item.active { background: #202020; color: #f0f0f0; box-shadow: inset 2px 0 0 #8c8c8c; }
+      .nav-item .icon { display: none; }
+      .tab-view { padding: 30px 36px; }
+      .overview-hero h1 { font-size: 24px; letter-spacing: -.03em; }
+      .stat-card, .comp-card, .flow-row { background: #171717; border-color: #2c2c2c; border-radius: 5px; box-shadow: none; }
+      .stat-card:hover, .comp-card:hover { border-color: #484848; background: #1b1b1b; transform: none; }
+      .stat-val { color: #d0d0d0; font-size: 22px; }
+      .banner-entrypoint, .alert-card { background: #191919; border-color: #363636; border-radius: 5px; box-shadow: none; }
+      .banner-content h3, .section-title { color: #d0d0d0; }
+      .btn-primary { background: #d0d0d0; color: #111; border-radius: 4px; }
+      .btn-primary:hover { background: #ededed; transform: none; }
+      .btn-secondary { background: #1c1c1c; border-color: #363636; border-radius: 4px; }
+      .btn-secondary:hover { border-color: #555; background: #252525; }
+      .confidence-high, .confidence-med, .confidence-low, .flow-node-badge, .pill-tag, .role-badge { background: #252525 !important; color: #bdbdbd !important; border-color: #444 !important; }
+      .onboard-sidebar, .onboard-main { background: #171717; border-color: #2c2c2c; border-radius: 5px; }
+      .step-item-card.active { background: #222; border-color: #4a4a4a; box-shadow: none; }
+      .graph-canvas-container { background: #101010; }
+      .graph-floating-controls { background: rgba(20,20,20,.94); border-color: #333; border-radius: 5px; backdrop-filter: none; }
+      .pill-opt.active { background: #bdbdbd; color: #111; }
+      .graph-inspector, .file-tree-pane, .ast-tree-pane, .code-viewer-header { background: #151515; }
+      .file-tree-item { border-radius: 4px; }
+      .file-tree-item:hover { background: #1f1f1f; }
+      .file-tree-item.active { background: #202020; border-left-color: #858585; }
+      .code-viewer-content { background: #101010; }
+      .docs-container { background: #171717; border-color: #2c2c2c; border-radius: 5px; box-shadow: none; }
+      .docs-tab-btn { background: #202020; border-color: #353535; }
+      .docs-tab-btn.active { background: #bdbdbd; color: #111; border-color: #bdbdbd; }
+      .modal-overlay { background: rgba(0,0,0,.72); backdrop-filter: blur(2px); }
+      .search-modal { background: #171717; border-color: #3a3a3a; border-radius: 5px; box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+      .search-input-wrap { background: #1d1d1d; border-bottom-color: #303030; }
+      .search-res-item { border-radius: 4px; }
+      .search-res-item:hover { background: #252525; }
+      input::placeholder { color: #666 !important; }
     </style>
 </head>
 <body>
@@ -1202,7 +1272,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <header>
     <div class="brand-group">
       <div class="brand-logo">
-        <span>⚡ KARUVI</span>
+        <span>KARUVI</span>
       </div>
       <div class="repo-pill" id="header-repo-name">Repository</div>
     </div>
@@ -1225,22 +1295,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <span>Overview</span>
       </div>
       <div class="nav-item" data-tab="architecture">
-        <span class="icon">🏛️</span>
+        <span class="icon"></span>
         <span>Architecture</span>
       </div>
       <div class="nav-item" data-tab="graph">
-        <span class="icon">🕸️</span>
+        <span class="icon"></span>
         <span>Graph Explorer</span>
       </div>
       <div class="nav-item" data-tab="code">
-        <span class="icon">📁</span>
+        <span class="icon"></span>
         <span>Code Explorer</span>
       </div>
 
-      <div class="sidebar-footer">
-        <span>Deterministic Intelligence</span>
-        <span style="opacity: 0.6;">Karuvi v0.2.0</span>
-      </div>
     </nav>
 
     <!-- Main Workspace -->
@@ -1258,7 +1324,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <!-- Start Here Entry Point Banner -->
         <div class="banner-entrypoint" id="entry-point-banner">
           <div class="banner-content">
-            <h3>🚪 Recommended Starting Point</h3>
+            <h3>Recommended Starting Point</h3>
             <div class="mod-title" id="entry-mod-name">analyzing...</div>
             <p id="entry-mod-desc">This module sits structurally high and can reach major portions of the repository.</p>
           </div>
@@ -1271,16 +1337,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="overview-cycle-radar" style="display: none;"></div>
 
         <!-- Key Architectural Insights -->
-        <div class="section-title">🌉 Structural Bridges & Central Modules</div>
+        <div class="section-title">Structural Bridges & Central Modules</div>
         <div id="bridges-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 30px;"></div>
       </div>
 
       <!-- VIEW 3: ARCHITECTURE -->
       <div class="tab-view" id="tab-architecture">
-        <div class="section-title">🏛️ Discovered Architectural Components</div>
+        <div class="section-title">️ Discovered Architectural Components</div>
         <div class="comp-grid" id="arch-components-grid"></div>
 
-        <div class="section-title">🌊 High-Level Architectural Flows</div>
+        <div class="section-title">High-Level Architectural Flows</div>
         <div class="flows-container" id="arch-flows-container"></div>
       </div>
 
@@ -1338,7 +1404,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="modal-overlay" id="search-modal-overlay">
     <div class="search-modal">
       <div class="search-input-wrap">
-        <span>🔍</span>
+        <span>Search</span>
         <input type="text" id="global-search-input" placeholder="Search components, modules, symbols, or roles... (Esc to close)">
       </div>
       <div class="search-results" id="search-results-list"></div>
@@ -1447,12 +1513,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         cycleRadarEl.innerHTML = `
           <div class="alert-card warning">
             <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
-              <span>⚠️ Circular Dependency Radar</span>
-              <span class="pill-tag" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">${cycles.length} loop(s) detected</span>
+              <span>Circular Dependency Radar</span>
+              <span class="pill-tag" style="background: rgba(150,150,150,0.2); color: #b0b0b0;">${cycles.length} loop(s) detected</span>
             </div>
             <div>Multi-module cyclic loops can cause tight coupling and initialization surprises. These are grouped into unified conceptual steps in the Onboarding course.</div>
             <div style="margin-top: 8px; font-family: 'Fira Code', monospace; font-size: 11px;">
-              ${cycles.map((c, i) => `<div>Loop #${i+1}: ${c.join(' ➔ ')}</div>`).join('')}
+              ${cycles.map((c, i) => `<div>Loop #${i+1}: ${c.join(' → ')}</div>`).join('')}
             </div>
           </div>
         `;
@@ -1465,8 +1531,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         bridgesContainer.innerHTML = bridgeMods.map(m => `
           <div class="stat-card" style="cursor: pointer;" onclick="window.selectModule('${m.id}')">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span class="role-badge" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3);">
-                ${m.role === 'BRIDGE' ? '🌉 Bridge' : '⚡ Hub'}
+              <span class="role-badge" style="background: rgba(150,150,150,0.15); color: var(--accent-amber); border: 1px solid rgba(150,150,150,0.3);">
+                ${m.role === 'BRIDGE' ? 'Bridge' : 'Hub'}
               </span>
               <span style="font-size: 11px; color: var(--text-muted);">${m.component_name}</span>
             </div>
@@ -1490,7 +1556,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         return `
           <div class="comp-card" onclick="window.inspectComponent('${c.id}')">
             <div class="comp-card-header">
-              <span class="comp-name">📦 ${c.name}</span>
+              <span class="comp-name">${c.name}</span>
               <span class="confidence-badge ${confClass}">${confPct}% confidence</span>
             </div>
             <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
@@ -1506,7 +1572,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         flowsContainer.innerHTML = data.flows.map(f => {
           const pathHtml = f.path.map((step, idx) => `
             <span class="flow-node-badge">${step}</span>
-            ${idx < f.path.length - 1 ? '<span class="flow-arrow">➔</span>' : ''}
+            ${idx < f.path.length - 1 ? '<span class="flow-arrow">→</span>' : ''}
           `).join('');
           return `
             <div class="flow-row">
@@ -1713,7 +1779,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (!mod) return;
         
         let html1 = '';
-        html1 += `<div style="font-size: 13px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); word-break: break-all;">🌳 Module Explorer<br><span style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace; font-weight: normal;">${mod.id}</span></div>`;
+        html1 += `<div style="font-size: 13px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); word-break: break-all;">Module Explorer<br><span style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace; font-weight: normal;">${mod.id}</span></div>`;
         
         // --- Upstream ---
         html1 += `
@@ -1727,7 +1793,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             mod.outgoing_modules.forEach(depId => {
               const depMod = (data.modules || []).find(m => m.id === depId);
               const depName = depMod ? depMod.path : depId;
-              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
+              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${depName}</span></div>`;
             });
         } else {
             html1 += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No imports)</div>`;
@@ -1746,7 +1812,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             mod.incoming_modules.forEach(depId => {
               const depMod = (data.modules || []).find(m => m.id === depId);
               const depName = depMod ? depMod.path : depId;
-              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${depName}</span></div>`;
+              html1 += `<div class="file-tree-item" onclick="window.selectModule('${depId}')"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${depName}</span></div>`;
             });
         } else {
             html1 += `<div style="padding: 4px 0; font-size: 11px; color: var(--text-muted);">None (No dependents)</div>`;
@@ -1755,7 +1821,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         
         // --- AST Tree ---
         let html2 = astStyles;
-        html2 += `<div style="font-size: 11px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 12px; text-transform: uppercase;">🌳 INTRA-FILE AST TREE</div>`;
+        html2 += `<div style="font-size: 11px; font-weight: 700; color: #fff; padding: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 12px; text-transform: uppercase;">INTRA-FILE AST TREE</div>`;
         html2 += `<div style="padding: 0 8px;">`;
         if (mod.code_flow) {
             html2 += renderASTNode(mod.code_flow);
@@ -1779,7 +1845,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         document.getElementById('code-file-path').textContent = `${mod.path} (${mod.line_count} LOC • ${mod.role})`;
         document.getElementById('code-header-actions').innerHTML = `
-          <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="window.jumpToGraphNode('${mod.id}')">View in Graph ➔</button>
+          <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="window.jumpToGraphNode('${mod.id}')">View in Graph </button>
         `;
 
         const codeContentEl = document.getElementById('code-viewer-content');
@@ -1824,7 +1890,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               </div>
               <div class="section-title">Functions & Signatures</div>
               <div style="font-family: 'Fira Code', monospace; line-height: 2;">
-                ${(mod.functions || []).map(f => `<div>⚡ <span style="color: var(--accent-green);">def</span> <strong>${f.name}</strong>${f.signature || '()'}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
+                ${(mod.functions || []).map(f => `<div><span style="color: var(--accent-green);">def</span> <strong>${f.name}</strong>${f.signature || '()'}</div>`).join('') || '<div style="color: var(--text-muted);">None</div>'}
               </div>
             </div>
           `;
@@ -1858,7 +1924,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 shape: 'box',
                 color: {
                   background: '#152037',
-                  border: '#38bdf8',
+                  border: '#b8b8b8',
                   highlight: { background: '#1d4ed8', border: '#60a5fa' }
                 },
                 font: { color: '#f8fafc', face: 'Inter', size: 14, bold: true },
@@ -1869,10 +1935,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               (c.modules || []).forEach(mId => {
                 const mod = (data.modules || []).find(m => m.id === mId);
                 const role = mod ? mod.role : 'MODULE';
-                let bColor = '#38bdf8';
-                if (role === 'BRIDGE') bColor = '#f59e0b';
-                else if (role === 'HUB') bColor = '#c084fc';
-                else if (role === 'LEAF') bColor = '#10b981';
+                let bColor = '#b8b8b8';
+                if (role === 'BRIDGE') bColor = '#969696';
+                else if (role === 'HUB') bColor = '#a0a0a0';
+                else if (role === 'LEAF') bColor = '#b0b0b0';
 
                 nodes.push({
                   id: `mod:${mId}`,
@@ -1899,7 +1965,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 from: `comp:${e.source}`,
                 to: `comp:${e.target}`,
                 arrows: 'to',
-                color: { color: 'rgba(56, 189, 248, 0.4)', highlight: '#38bdf8' },
+                color: { color: 'rgba(184,184,184,0.4)', highlight: '#b8b8b8' },
                 width: Math.min(6, Math.max(1, Math.log2((e.weight || 1) + 1))),
               });
             }
@@ -1911,7 +1977,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
                 arrows: 'to',
-                color: { color: 'rgba(148, 163, 184, 0.3)', highlight: '#38bdf8' },
+                color: { color: 'rgba(148, 163, 184, 0.3)', highlight: '#b8b8b8' },
                 width: 1,
               });
             });
@@ -1919,12 +1985,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         } else if (level === 'modules') {
           (data.modules || []).forEach(m => {
-            let bColor = '#38bdf8';
-            if (m.role === 'BRIDGE') bColor = '#f59e0b';
-            else if (m.role === 'HUB') bColor = '#c084fc';
-            else if (m.role === 'LEAF') bColor = '#10b981';
-            else if (m.role === 'CYCLE_MEMBER') bColor = '#f43f5e';
-            else if (m.role === 'ENTRY_CANDIDATE') bColor = '#22d3ee';
+            let bColor = '#b8b8b8';
+            if (m.role === 'BRIDGE') bColor = '#969696';
+            else if (m.role === 'HUB') bColor = '#a0a0a0';
+            else if (m.role === 'LEAF') bColor = '#b0b0b0';
+            else if (m.role === 'CYCLE_MEMBER') bColor = '#7a7a7a';
+            else if (m.role === 'ENTRY_CANDIDATE') bColor = '#c4c4c4';
 
             nodes.push({
               id: `mod:${m.id}`,
@@ -1952,7 +2018,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 from: `mod:${e.source}`,
                 to: `mod:${e.target}`,
                 arrows: 'to',
-                color: { color: 'rgba(56, 189, 248, 0.35)', highlight: '#38bdf8' },
+                color: { color: 'rgba(184,184,184,0.35)', highlight: '#b8b8b8' },
                 width: Math.min(5, Math.max(1, e.weight || 1)),
               });
             }
@@ -1972,7 +2038,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 id: srcNodeId,
                 label: `${xr.source_file.split('/').pop()}\\n${xr.scope || 'call'}()`,
                 shape: 'ellipse',
-                color: { background: '#152037', border: '#38bdf8' },
+                color: { background: '#152037', border: '#b8b8b8' },
                 font: { color: '#e2e8f0', size: 10 },
               });
             }
@@ -1980,10 +2046,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               symbolNodesSet.add(tgtNodeId);
               nodes.push({
                 id: tgtNodeId,
-                label: `${xr.target_file.split('/').pop()}\\n⚡ ${xr.symbol}`,
+                label: `${xr.target_file.split('/').pop()}\\n ${xr.symbol}`,
                 shape: 'box',
-                color: { background: '#090d16', border: '#10b981' },
-                font: { color: '#10b981', face: 'Fira Code', size: 10 },
+                color: { background: '#090d16', border: '#b0b0b0' },
+                font: { color: '#b0b0b0', face: 'Fira Code', size: 10 },
               });
             }
 
@@ -1991,7 +2057,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               from: srcNodeId,
               to: tgtNodeId,
               arrows: 'to',
-              color: { color: 'rgba(16, 185, 129, 0.4)' },
+              color: { color: 'rgba(176,176,176,0.4)' },
             });
           });
 
@@ -2211,18 +2277,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const results = [];
         (data.components || []).forEach(c => {
           if (!query || c.name.toLowerCase().includes(query)) {
-            results.push({ type: 'Component', label: `📦 ${c.name}`, sub: `${c.modules.length} modules`, action: () => { closeSearch(); window.inspectComponent(c.id); } });
+            results.push({ type: 'Component', label: `${c.name}`, sub: `${c.modules.length} modules`, action: () => { closeSearch(); window.inspectComponent(c.id); } });
           }
         });
         (data.modules || []).forEach(m => {
           if (!query || m.path.toLowerCase().includes(query) || m.role.toLowerCase().includes(query)) {
-            results.push({ type: 'Module', label: `📄 ${m.name}`, sub: `${m.path} (${m.role})`, action: () => { closeSearch(); window.selectModule(m.id); } });
+            results.push({ type: 'Module', label: `${m.name}`, sub: `${m.path} (${m.role})`, action: () => { closeSearch(); window.selectModule(m.id); } });
           }
         });
         (data.modules || []).forEach(m => {
           (m.functions || []).forEach(f => {
             if (query && f.name.toLowerCase().includes(query)) {
-              results.push({ type: 'Function', label: `⚡ ${f.name}()`, sub: `in ${m.path}`, action: () => { closeSearch(); window.selectModule(m.id); } });
+              results.push({ type: 'Function', label: `${f.name}()`, sub: `in ${m.path}`, action: () => { closeSearch(); window.selectModule(m.id); } });
             }
           });
         });
@@ -2238,7 +2304,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <div style="font-weight: 600; font-size: 13px; color: #fff;">${r.label}</div>
               <div style="font-size: 11px; color: var(--text-muted); font-family: 'Fira Code', monospace;">${r.sub}</div>
             </div>
-            <span style="font-size: 10px; text-transform: uppercase; color: var(--accent-blue); background: rgba(56,189,248,0.1); padding: 2px 6px; border-radius: 4px;">${r.type}</span>
+            <span style="font-size: 10px; text-transform: uppercase; color: var(--accent-blue); background: rgba(184,184,184,0.1); padding: 2px 6px; border-radius: 4px;">${r.type}</span>
           </div>
         `).join('');
 
