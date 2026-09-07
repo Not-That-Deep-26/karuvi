@@ -1,441 +1,505 @@
+# Karuvi (கருவி) — Autonomous Codebase Intelligence & Architecture Reconstruction Engine
+
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/)
+[![Package Manager](https://img.shields.io/badge/uv-supported-purple.svg)](https://github.com/astral-sh/uv)
+[![Parser](https://img.shields.io/badge/tree--sitter-0.26-green.svg)](https://tree-sitter.github.io/)
+[![Framework](https://img.shields.io/badge/FastAPI-0.141-teal.svg)](https://fastapi.tiangolo.com/)
+[![Graph](https://img.shields.io/badge/NetworkX-3.0%2B-orange.svg)](https://networkx.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> **Karuvi** *(Tamil for "Tool" or "Instrument")* is an advanced, high-performance static analysis and architectural reconstruction engine for Python codebases. It combines tree-sitter AST parsing, graph centrality mathematics, community detection, and heuristic flow tracing to transform raw repositories into actionable architectural models, progressive onboarding guides, and an interactive, zero-dependency **Living Codebase Atlas** web application.
 
 ---
 
 ## Table of Contents
 
-- [1. Installation & Setup](#1-installation--setup)
-- [2. Quickstart (First 5 Minutes)](#2-quickstart-first-5-minutes)
-- [3. CLI Complete Reference](#3-cli-complete-reference)
-  - [Cheat-Sheet Table](#cheat-sheet-table)
-  - [Intra-File AST Tree (`--tree`, `-t`)](#intra-file-ast-tree---tree--t)
-  - [Dependency Topology (`--deps`)](#dependency-topology---deps)
-  - [Blast Radius Tracer (`--blast`)](#blast-radius-tracer---blast)
-  - [Circular Dependency Detection (`--cycles`)](#circular-dependency-detection---cycles)
-  - [Symbol Inspector (`--inspect`)](#symbol-inspector---inspect)
-  - [Code Flow Chart (`--chart`)](#code-flow-chart---chart)
-  - [ASCII Graph Matrix (`--graph`)](#ascii-graph-matrix---graph)
-  - [Exporting Reports (`--html`, `--json`, `--mermaid`)](#exporting-reports---html---json---mermaid)
-- [4. Interactive Terminal Navigator (`-i`)](#4-interactive-terminal-navigator--i)
-- [5. Sourcetrail HTML Visualizer Guide](#5-sourcetrail-html-visualizer-guide)
-  - [3-Pane Workspace Breakdown](#3-pane-workspace-breakdown)
-  - [Exploring Large Repositories](#exploring-large-repositories)
-  - [One-Click Blast Radius Highlighting](#one-click-blast-radius-highlighting)
-  - [Investigating Circular Dependencies](#investigating-circular-dependencies)
-- [6. Karuvi Daemon & HTTP API](#6-karuvi-daemon--http-api)
-- [7. Programmatic Python API](#7-programmatic-python-api)
-- [8. Troubleshooting & FAQ](#8-troubleshooting--faq)
+- [1. Overview & Core Philosophy](#1-overview--core-philosophy)
+- [2. Installation & Quickstart](#2-installation--quickstart)
+  - [Prerequisites](#prerequisites)
+  - [Installation with `uv`](#installation-with-uv)
+  - [30-Second Quickstart](#30-second-quickstart)
+- [3. Key Capabilities](#3-key-capabilities)
+  - [Stage 1: Deep AST & Multi-Graph Static Analysis](#stage-1-deep-ast--multi-graph-static-analysis)
+  - [Stage 2: Architectural Reconstruction Engine](#stage-2-architectural-reconstruction-engine)
+  - [Stage 3: Multi-Tier Cognitive Onboarding Engine](#stage-3-multi-tier-cognitive-onboarding-engine)
+  - [Stage 4: Living Codebase Atlas (Interactive Web Visualizer)](#stage-4-living-codebase-atlas-interactive-web-visualizer)
+- [4. Complete CLI Command Reference](#4-complete-cli-command-reference)
+  - [CLI Command Cheat-Sheet](#cli-command-cheat-sheet)
+  - [Detailed Command Usage & Examples](#detailed-command-usage--examples)
+- [5. The Living Codebase Atlas Web Interface](#5-the-living-codebase-atlas-web-interface)
+  - [Tab 1: Overview Dashboard](#tab-1-overview-dashboard)
+  - [Tab 2: Onboarding Tour](#tab-2-onboarding-tour)
+  - [Tab 3: System Architecture](#tab-3-system-architecture)
+  - [Tab 4: Graph Explorer](#tab-4-graph-explorer)
+  - [Tab 5: Sourcetrail-Grade Code Explorer](#tab-5-sourcetrail-grade-code-explorer)
+  - [Global Search Modal (`Cmd+K` / `Ctrl+K`)](#global-search-modal-cmdk--ctrlk)
+- [6. Karuvi Daemon & REST API Reference](#6-karuvi-daemon--rest-api-reference)
+  - [Starting the Daemon](#starting-the-daemon)
+  - [API Endpoints](#api-endpoints)
+- [7. Programmatic Python SDK API](#7-programmatic-python-sdk-api)
+- [8. Architecture & Design Principles](#8-architecture--design-principles)
+- [9. Troubleshooting & FAQ](#9-troubleshooting--faq)
+- [10. License](#10-license)
 
 ---
 
-## 1. Installation & Setup
+## 1. Overview & Core Philosophy
 
-### Requirements
-- **Python**: 3.10 or newer
-- **Package Manager**: [uv](https://github.com/astral-sh/uv) (strongly recommended) or standard `pip`
+Large and legacy software repositories suffer from **architectural entropy**: documentation rots, invisible circular dependencies proliferate, critical bridge modules become bottlenecks, and onboarding developers spend weeks deciphering unspoken execution paths.
 
-### Setup with `uv`
-Inside the repository clone:
+Karuvi solves this by performing **deterministic, bottom-up architectural reconstruction**:
+
+```
+┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
+│  Raw Python Source Tree │ ──> │   Tree-Sitter AST Parse │ ──> │ Multi-Graph Indexing    │
+│  (.py files & packages) │     │ (scopes, UUIDs, syntax) │     │ (calls, imports, refs)  │
+└─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
+                                                                             │
+┌─────────────────────────┐     ┌─────────────────────────┐                  ▼
+│  Living Codebase Atlas  │ <── │ Architectural Engine    │ <── ┌─────────────────────────┐
+│  (Interactive HTML App) │     │ (roles, flows, bounds)  │     │ Graph Topology Metrics  │
+└─────────────────────────┘     └─────────────────────────┘     │ (PageRank, centrality)  │
+                                                                └─────────────────────────┘
+```
+
+1. **Zero Guesswork**: Every connection is grounded in concrete tree-sitter AST nodes, symbol definitions, calls, or imports.
+2. **Cognitive Clarity**: Modules are automatically classified by architectural role (`ENTRY_CANDIDATE`, `HUB`, `BRIDGE`, `LEAF`, `CYCLE_MEMBER`, `INTERMEDIARY`).
+3. **Cohesive Boundaries**: Louvain modularity clustering and directory affinity identify real architectural components without manual tagging.
+4. **Zero-Dependency Portability**: Emits self-contained, standalone single-file HTML apps that require no build steps, node servers, or external services to inspect.
+
+---
+
+## 2. Installation & Quickstart
+
+### Prerequisites
+
+- **Python**: `3.13` or newer
+- **Package Manager**: [uv](https://github.com/astral-sh/uv) *(strongly recommended for maximum performance)* or standard `pip`
+
+### Installation with `uv`
+
+Clone the Karuvi repository and sync dependencies:
+
 ```bash
-# Sync dependencies automatically into the virtual environment
+git clone https://github.com/tarunness-ops/karuvi.git
+cd karuvi
+
+# Install dependencies into virtual environment instantly
 uv sync
 ```
 
-Dependencies include `tree-sitter`, `tree-sitter-python`, `rich`, `fastapi`, and `uvicorn`.
+Alternatively, install the package in editable mode:
 
-### Running Karuvi
-You can run Karuvi via `uv run karuvi` or directly with `uv run python cli.py`:
+```bash
+uv pip install -e .
+```
+
+### 30-Second Quickstart
+
+Point Karuvi at any target Python repository to generate an interactive Living Codebase Atlas:
+
+```bash
+# Scan a repository and launch directly in your default browser
+uv run karuvi /path/to/target-repo explore
+```
+
+Or run an on-demand terminal scan:
+
 ```bash
 uv run karuvi /path/to/target-repo
-# or
-uv run python cli.py /path/to/target-repo
+```
+
+When prompted:
+```text
+Save analysis outputs? ([j]son / [h]tml / [b]oth / [n]one) [b]: h
+✔ Saved Living Codebase Atlas interactive HTML visualizer to: /path/to/target-repo/karuvi_atlas.html
 ```
 
 ---
 
-## 2. Quickstart (First 5 Minutes)
+## 3. Key Capabilities
 
-### Step 1: Scan a Repository
-Point Karuvi at any local Python repository (e.g. `/home/tarun/microdot-main/`):
-```bash
-uv run karuvi /home/tarun/microdot-main/
-```
-Karuvi automatically:
-1. Crawls all `.py` files (excluding `.venv`, `__pycache__`, `.git`, `node_modules`).
-2. Parses every module using tree-sitter into an in-memory graph.
-3. Indexes declarations, variable scopes, UUIDs, imports, and cross-file usages.
-4. Renders the ASCII Dashboard with metrics, connection tables, and external dependencies.
+### Stage 1: Deep AST & Multi-Graph Static Analysis
 
-### Step 2: Generate the Sourcetrail Interactive Visualizer
-Export an interactive visualizer HTML file:
-```bash
-uv run karuvi /home/tarun/microdot-main/ --html microdot_graph.html
-```
-Open `microdot_graph.html` in any browser:
-```bash
-xdg-open microdot_graph.html   # Linux
-open microdot_graph.html       # macOS
-start microdot_graph.html      # Windows
-```
+- **Tree-Sitter Grammar Engine**: Parses syntax trees with complete resilience to syntax quirks, tracking lexical scopes, variable life-cycles, function signatures, and class hierarchies.
+- **Deterministic Symbol UUIDs**: Generates stable, content-derived UUIDs for every statement, block, branch, and expression to enable precise blast radius queries.
+- **Multi-Relational Dependency Graph**: Builds directed multigraphs discriminating between `IMPORT` (module loading), `CALL` (runtime invocation), and `REFERENCE` (symbol lookup).
+
+### Stage 2: Architectural Reconstruction Engine
+
+- **Structural Metric Computation**:
+  - **In-Degree & Out-Degree**: Module coupling and fan-out.
+  - **Betweenness Centrality**: Identifies critical bottlenecks that mediate communication across subsystems.
+  - **PageRank Centrality**: Ranks core modules by systemic structural authority.
+  - **Transitive Downstream Reach**: Measures blast radius and total reachable downstream code surface.
+- **Automated Role Detection**:
+  - **`ENTRY_CANDIDATE`**: Low incoming coupling, high downstream reach (CLI entry points, API controllers, scripts).
+  - **`HUB`**: High total degree and PageRank centrality; core coordination nodes.
+  - **`BRIDGE`**: High betweenness centrality; bridges distinct architectural subsystems.
+  - **`LEAF`**: High incoming coupling, zero or minimal outgoing imports (utility modules, primitives, models).
+  - **`CYCLE_MEMBER`**: Part of an architectural circular dependency loop ($SCC > 1$).
+  - **`INTERMEDIARY`**: Balanced operational units in the standard data flow.
+- **Boundary & Community Detection**: Applies Louvain modularity optimization weighted by call frequencies and directory structure heuristics to group related modules into high-confidence architectural components.
+- **End-to-End Architectural Flows**: Traces execution sequences starting from discovered entry points, through intermediaries, down to terminal persistence and leaf modules.
+
+### Stage 3: Multi-Tier Cognitive Onboarding Engine
+
+- **Targeted Reading Roadmaps**: Automatically computes cognitive reading orders broken down by developer experience:
+  - **Beginner**: High-level entry candidates and high-level architectural flows.
+  - **Intermediate**: Hub modules, architectural bridges, and subsystem communication contracts.
+  - **Advanced**: Circular dependency loops, high-centrality risk areas, and deep AST symbol bindings.
+
+### Stage 4: Living Codebase Atlas (Interactive Web Visualizer)
+
+- Standalone, zero-dependency HTML file embedding all metadata, styles, Monaco Editor, and vis.js canvas.
+- Features a **monochrome, minimalist workstation UI** with high-contrast role-colored graphs and 3-pane code exploration.
 
 ---
 
-## 3. CLI Complete Reference
+## 4. Complete CLI Command Reference
 
-### Cheat-Sheet Table
-To view the built-in reference table anytime in the terminal:
+### CLI Command Cheat-Sheet
+
+To display the built-in reference table directly in your terminal at any time:
+
 ```bash
 uv run karuvi --commands
 ```
 
 | Command / Flag | Alias | Description | Example Usage |
 |---|---|---|---|
-| `karuvi <repo>` | — | Scan repository and display summary dashboard | `uv run karuvi /path/to/repo` |
+| `karuvi <repo>` | — | Scan repository, build graph, and display summary dashboard | `uv run karuvi /path/to/repo` |
+| `onboard` | `--onboard` | Generate progressive reading roadmap with complexity tiers | `uv run karuvi <repo> onboard --level beginner` |
+| `explore` | `--explore` | Generate and open Living Codebase Atlas in default browser | `uv run karuvi <repo> explore` |
 | `--tree <file>` | `-t`, `--file-tree` | Print aesthetic ASCII intra-file AST & code flow tree | `uv run karuvi <repo> -t src/app.py` |
 | `--deps <file>` | — | Print upstream imports & downstream dependents tree | `uv run karuvi <repo> --deps src/app.py` |
-| `--blast <uuid\|name>` | `--blast-radius` | Trace cross-module call sites and impact of a symbol | `uv run karuvi <repo> --blast verify_token` |
-| `--cycles` | — | Detect & display circular dependency loops in ASCII | `uv run karuvi <repo> --cycles` |
-| `--inspect <file>` | — | Inspect classes, methods, functions & symbols in a file | `uv run karuvi <repo> --inspect src/app.py` |
-| `--chart <file>` | `--file-chart` | Print indentation-based control flow chart | `uv run karuvi <repo> --chart src/app.py` |
-| `--graph` | `--ascii-graph` | Display ASCII connectivity matrix / summary table | `uv run karuvi <repo> --graph` |
+| `--chart <file>` | `--file-chart` | Print indentation-based control flow chart for a file | `uv run karuvi <repo> --chart src/app.py` |
+| `--inspect <file>` | — | Inspect declared classes, methods, functions & symbols | `uv run karuvi <repo> --inspect src/app.py` |
+| `--blast <uuid\|name>` | `--blast-radius` | Trace cross-module blast radius & call sites of a symbol | `uv run karuvi <repo> --blast verify_token` |
+| `--cycles` | — | Detect & display all circular dependency loops in ASCII | `uv run karuvi <repo> --cycles` |
+| `--graph` | `--ascii-graph` | Display ASCII connectivity matrix / dependency summary | `uv run karuvi <repo> --graph` |
 | `--architecture` | `-a` | Reconstruct architecture components, roles & flows | `uv run karuvi <repo> -a` |
 | `--arch-json <path>` | — | Export reconstructed architecture model to JSON | `uv run karuvi <repo> -a --arch-json arch.json` |
 | `--arch-doc <path>` | — | Export deterministic Markdown architecture docs | `uv run karuvi <repo> -a --arch-doc ARCH.md` |
 | `--interactive` | `-i` | Launch interactive terminal explorer & AST navigator | `uv run karuvi <repo> -i` |
-| `--html <path>` | — | Export standalone Sourcetrail interactive HTML visualizer | `uv run karuvi <repo> --html graph.html` |
-| `--json <path>` | `-j` | Export full repository analysis and AST dump | `uv run karuvi <repo> --json report.json` |
-| `--mermaid` | — | Output Mermaid.js dependency diagram to stdout | `uv run karuvi <repo> --mermaid` |
+| `--html <file.html>` | — | Generate Living Codebase Atlas interactive web visualizer | `uv run karuvi <repo> --html atlas.html` |
+| `--json <file.json>` | — | Export complete repository analysis and AST dump | `uv run karuvi <repo> --json report.json` |
+| `--mermaid` | — | Print Mermaid.js dependency diagram to stdout | `uv run karuvi <repo> --mermaid` |
 | `--serve` | — | Launch FastAPI stateful daemon server on port 8000 | `uv run karuvi <repo> --serve` |
-| `--verbose` | `-v` | Show verbose parser warning messages | `uv run karuvi <repo> -v` |
 
 ---
 
-### Intra-File AST Tree (`--tree`, `-t`)
-Inspects the inner syntax tree, control flow statements, variable declarations, and nested scopes for a single file.
+### Detailed Command Usage & Examples
 
+#### 1. Repository Summary Scan
+Performs tree-sitter AST crawling, resolves all relative and absolute imports, detects cycles, and renders Rich summary tables:
 ```bash
-uv run karuvi /home/tarun/microdot-main/ -t src/microdot/session.py
+uv run karuvi ./my-project
 ```
 
-**Output Breakdown:**
-- `📦 <file_name>`: Module root with total functions, classes, and variable symbols.
-- `🏷️ Classes`: Declared class blocks, unique UUIDs, and their methods with argument signatures.
-- `⚡ Top-level Functions`: Declared functions with parameters.
-- `🌳 AST Code Flow & Scopes`:
-  - `🏷️ class <Name>`: Class scope boundaries.
-  - `⚡ def <name>(<args>)`: Function bodies.
-  - `🔹 <var_name>`: New variable assignment with generated UUID.
-  - `↪️ <var_name>`: Variable reference pointing back to its declaration line (`ref -> L24`).
-
----
-
-### Dependency Topology (`--deps`)
-Inspects what a specific file depends on and what depends on it:
-
+#### 2. Architecture Reconstruction (`-a`, `--architecture`)
+Runs community detection, classifies roles, identifies boundaries, and prints high-level flows:
 ```bash
-uv run karuvi /home/tarun/microdot-main/ --deps src/microdot/asgi.py
+uv run karuvi ./my-project -a
+```
+To export architecture models to JSON or deterministic Markdown:
+```bash
+uv run karuvi ./my-project -a --arch-json arch.json --arch-doc ARCHITECTURE.md
 ```
 
-**Displays:**
-1. **⬆ Upstream Dependencies**:
-   - Internal module imports (e.g. `src/microdot/microdot.py`).
-   - External third-party packages (e.g. `fastapi`, `jinja2`).
-2. **⬇ Downstream Dependents**:
-   - Internal files importing this module.
-3. **🔀 Cross-Module Symbol Usages**:
-   - Specific symbols this file uses from other modules.
-   - Specific symbols this file exports that are called elsewhere.
-
----
-
-### Blast Radius Tracer (`--blast`)
-Before modifying or refactoring a function, class, or symbol, trace its blast radius across the whole codebase:
-
+#### 3. Cognitive Onboarding Roadmap (`onboard`)
+Generates tailored learning trajectories categorized by developer tier:
 ```bash
-# By symbol name:
-uv run karuvi /home/tarun/microdot-main/ --blast subapp
+# Beginner tier (entry points, high-level flows)
+uv run karuvi ./my-project onboard --level beginner
 
-# Or by UUID:
-uv run karuvi /home/tarun/microdot-main/ --blast ffb6be2d-e62d-4091-a957-3f9547d6d33a
+# Intermediate tier (subsystem hubs, bridges)
+uv run karuvi ./my-project onboard --level intermediate
+
+# Advanced tier (circular loops, high blast-radius symbols)
+uv run karuvi ./my-project onboard --level advanced
 ```
 
-**Output:**
-- **📍 Declared at**: `examples/subapps/subapp.py:3`
-- **🎯 Impacted Call Sites**:
-  - `💥 examples/subapps/app.py:5:10 (scope: module)`
-- **Impact Summary**: Number of affected call sites across distinct files.
-
----
-
-### Circular Dependency Detection (`--cycles`)
-Detects circular import loops across all internal modules using cycle path tracing:
-
+#### 4. Instant Living Atlas Launch (`explore`)
+Generates the self-contained HTML visualizer in the target directory and launches it directly in your web browser:
 ```bash
-uv run karuvi /path/to/repo --cycles
+uv run karuvi ./my-project explore
 ```
 
-If loops are detected, Karuvi draws ASCII loop boxes showing the exact circular chain:
-```text
-⚠️  Detected 1 Circular Dependency Loop(s):
-
-Loop #1 (3 modules):
-  ┌──► [src/app.py]
-  │        │ imports
-  │        ▼
-  │    [src/utils.py]
-  │        │ imports
-  │        ▼
-  │    [src/config.py]
-  │        │ imports src/app.py
-  └────────┘
-```
-If no cycles exist, it outputs a clean validation banner:
-`✔ No circular dependencies detected in repository modules!`
-
----
-
-### Symbol Inspector (`--inspect`)
-Prints a structured terminal summary of all symbols declared in a specific file:
-
+#### 5. Intra-File AST Tree (`--tree`, `-t`)
+Inspects the lexical scope tree, variable life-cycles, class definitions, and internal method blocks of a specific file:
 ```bash
-uv run karuvi /home/tarun/microdot-main/ --inspect src/microdot/session.py
+uv run karuvi ./my-project -t src/server.py
 ```
-Lists:
-- Function signatures with assigned UUIDs.
-- Classes and their member methods.
-- Module-level variables and imported alias mappings.
 
----
-
-### Code Flow Chart (`--chart`)
-Renders an indentation-based control flow outline showing nested statements, function definitions, and expression blocks:
-
+#### 6. Upstream & Downstream Dependencies (`--deps`)
+Prints an ASCII tree showing everything imported by a module (**Upstream**) and every other module that depends on it (**Downstream**):
 ```bash
-uv run karuvi /home/tarun/microdot-main/ --chart src/microdot/session.py
+uv run karuvi ./my-project --deps src/models/user.py
+```
+
+#### 7. Blast Radius Tracer (`--blast`)
+Identifies all call sites across the entire repository that directly or transitively depend on a symbol or AST UUID:
+```bash
+# By symbol name
+uv run karuvi ./my-project --blast authenticate_user
+
+# By deterministic AST UUID
+uv run karuvi ./my-project --blast 4a12f9b0-9e23-4819-bf92-823901a8ef10
+```
+
+#### 8. Circular Dependency Detection (`--cycles`)
+Uses Tarjan's strongly connected components algorithm to detect and visualize circular import loops:
+```bash
+uv run karuvi ./my-project --cycles
+```
+
+#### 9. Export Options (`--html`, `--json`, `--mermaid`)
+```bash
+# Standalone Interactive HTML visualizer
+uv run karuvi ./my-project --html visualizer.html
+
+# Raw AST dump and graph connectivity JSON
+uv run karuvi ./my-project --json graph_dump.json
+
+# Mermaid.js diagram definition printed to stdout
+uv run karuvi ./my-project --mermaid > dependency_diagram.mmd
+```
+
+#### 10. Interactive Terminal AST Navigator (`-i`)
+Launches a responsive terminal console allowing interactive jumping across files, classes, methods, and call sites without leaving the shell:
+```bash
+uv run karuvi ./my-project -i
 ```
 
 ---
 
-### ASCII Graph Matrix (`--graph`)
-Displays a whole-repository connectivity matrix in the terminal:
+## 5. The Living Codebase Atlas Web Interface
 
-```bash
-uv run karuvi /home/tarun/microdot-main/ --graph
+The **Living Codebase Atlas** is a standalone, single-file HTML web application engineered with a clean, minimalist workstation aesthetic.
+
 ```
-Summarizes internal imports, external dependencies, and inbound/outbound degrees for every module.
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  KARUVI ATLAS  │  my-repo  │  [Q Search (Cmd+K)]                                      [Overview]    │
+├──────────────┬───────────────────────────────────────────────────────────────────────────────────────┤
+│  NAV SIDEBAR │  MAIN WORKSPACE                                                                       │
+│              │                                                                                       │
+│  Overview    │  [Tab 1: Overview Dashboard]                                                          │
+│  Onboarding  │  System health, metrics, top entry points, architecture overview                      │
+│  Arch        │                                                                                       │
+│  Graph       │  [Tab 4: Graph Explorer]                                                              │
+│  Code        │  Force-directed interactive network canvas                                            │
+│              │  - Role-colored boxes (Cyan: Entry, Rose: Cycle, Purple: Hub, Amber: Bridge, etc.)     │
+│              │  - Colored connecting lines matching node origins                                     │
+│              │  - Role filter pills (All, Entry, Cycle, Hub, Bridge, Leaf)                           │
+│              │  - Relationship checkboxes (Calls, Imports, References)                               │
+│              │  - Smart greying out: unrelated nodes & wires dim automatically                        │
+│              │                                                                                       │
+│              │  [Tab 5: Sourcetrail-Grade Code Explorer]                                             │
+│              │  ┌──────────────────────┬──────────────────────┬────────────────────────────────────┐ │
+│              │  │ Column 1:            │ Column 2:            │ Column 3:                          │ │
+│              │  │ Module Explorer      │ Intra-File AST Tree  │ Monaco Code Editor                 │ │
+│              │  │ - Upstream Imports   │ - Collapsible Nodes  │ - Read-only syntax highlighting    │ │
+│              │  │ - Downstream Deps    │ - Clickable Line #s  │ - Direct symbol reveal line jumps  │ │
+│              │  │ - Colored Branches   │ - Role Branch Lines  │ - Zero flicker / Instant switching │ │
+│              │  └──────────────────────┴──────────────────────┴────────────────────────────────────┘ │
+└──────────────┴───────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Tab 1: Overview Dashboard
+- High-level metric summary: Total Modules, Discovered Architectural Components, Total Inter-Module Dependencies, Total Lines of Code, and Circular Loops.
+- Top Entry Point banner with confidence scores and downstream reach evidence.
+- Structural health indicators and quick navigation links.
+
+### Tab 2: Onboarding Tour
+- Step-by-step cognitive roadmaps tailored for **Beginner**, **Intermediate**, and **Advanced** engineers.
+- Interactive step items with complexity ratings, rationale, and quick-inspection shortcuts.
+
+### Tab 3: System Architecture
+- Reconstructed architectural component cards displaying cohesion confidence percentages, member module counts, and discovery methods.
+- High-level architectural flows illustrating subsystem-to-subsystem communication chains.
+
+### Tab 4: Graph Explorer
+An interactive vis.js canvas visualizing whole-repository module connectivity:
+- **Role-Based Node Color Coding**:
+  - **Entry Candidates (`ENTRY_CANDIDATE`)**: Vibrant Cyan (`#06b6d4` border, deep teal background)
+  - **Circular Loops (`CYCLE_MEMBER`)**: Crimson Rose (`#f43f5e` border, dark burgundy background)
+  - **Hub Modules (`HUB`)**: Purple / Violet (`#c084fc` border, deep purple background)
+  - **Bridge Modules (`BRIDGE`)**: Amber / Warm Gold (`#f59e0b` border, dark amber background)
+  - **Leaf Modules (`LEAF`)**: Emerald Green (`#10b981` border, dark emerald background)
+  - **Standard Modules (`INTERMEDIARY`)**: Sky Blue (`#38bdf8` border, deep slate background)
+- **Role-Colored Connecting Lines (Edges)**:
+  - Connecting lines dynamically take on the color of their origin node.
+  - Circular dependency loops are highlighted with thick, prominent Rose/Red lines (`#f43f5e`, `width: 2.5`).
+- **Smart Greying Out & Filtering**:
+  - Clicking any role pill (`Entry`, `Cycle`, `Hub`, `Bridge`, `Leaf`) or typing a regex in the node filter keeps matching nodes and their connecting wires active while **greying out non-matching nodes AND their connecting wires** down to `opacity: 0.06`.
+  - Clicking any node isolates its immediate neighborhood while dimming all unrelated nodes and edges across the canvas.
+- **Relationship Type Toggles**:
+  - Live toggles for **Calls**, **Imports**, and **References** with matching color indicators.
+- **Direct Code Explorer Integration**:
+  - Clicking any node in the graph instantly transitions to Tab 5 (Code Explorer) with that module selected, its AST parsed, and its source code rendered in Monaco.
+
+### Tab 5: Sourcetrail-Grade Code Explorer
+A responsive 3-column code inspection layout:
+1. **Column 1: Module Explorer (Dependency Hierarchy)**:
+   - **Upstream Dependencies**: Modules imported by the current file, bordered with an amber branch indicator.
+   - **Downstream Dependents**: Modules that import the current file, bordered with an emerald branch indicator.
+   - One-click navigation to jump across connected files.
+2. **Column 2: Intra-File AST Tree**:
+   - Collapsible hierarchy of lexical scopes, classes, functions, variable declarations, and invocation calls.
+   - Formatted badges: `[CLASS]` (purple), `[FUNCTION]` (blue), `[VAR]` (green), `[CALL]` (amber).
+   - Right-angle tree connector lines colored to match the parent and child badge boundaries.
+   - **Clickable Line Jumpers (`L42`)**: Clicking any line indicator instantly centers and reveals the exact line in the Monaco editor.
+3. **Column 3: Monaco Code Editor**:
+   - High-performance Monaco editor running syntax highlighting in dark mode.
+   - Clean, read-only inspection with automatic layout adjustment.
+
+### Global Search Modal (`Cmd+K` / `Ctrl+K`)
+Press `Cmd+K` (macOS) or `Ctrl+K` (Linux/Windows) anywhere in the application to open the instantaneous global search overlay to filter by module name, component, architectural role, or symbol.
 
 ---
 
-### Exporting Reports (`--html`, `--json`, `--mermaid`)
-
-#### 1. Interactive Living Codebase Atlas (`--html`)
-```bash
-uv run karuvi /home/tarun/microdot-main/ --html microdot_atlas.html
-```
-Produces a completely self-contained, dark-mode single-page HTML application (zero external server dependencies) uniting Karuvi's 5 core modes:
-1. **◉ Overview Dashboard**: Codebase vitals, metrics, and structural "Start Here" entry point recommendations.
-2. **🗺️ Architecture**: Reconstructed components, confidence scores, structural roles, and cross-component flows.
-3. **🕸️ Graph Explorer**: Multi-scale canvas with dynamic cluster unfolding (Component ➔ Modules ➔ Symbols).
-4. **📁 Code Explorer**: Interactive file tree with role badges and AST code flow hierarchy.
-
-#### 2. Full Analysis JSON (`--json`)
-```bash
-uv run karuvi /home/tarun/microdot-main/ --json analysis.json
-```
-Exports:
-- Whole graph metrics (`nodes`, `edges`, `cross_references`, `cycles`).
-- Full module AST tree dumps (`code_flow`, `scope`, `functions`, `classes`).
-
-#### 3. Mermaid Diagram (`--mermaid`)
-```bash
-uv run karuvi /home/tarun/microdot-main/ --mermaid > dependency_graph.mmd
-```
-Outputs a Mermaid.js diagram ready to embed in Markdown documentation.
-
----
-
-## 4. Interactive Terminal Navigator (`-i`)
-
-For exploring a codebase interactively without re-running terminal commands:
-
-```bash
-uv run karuvi /home/tarun/microdot-main/ -i
-```
-
-An interactive menu appears:
-```text
-╭────────────────────── Karuvi Interactive Menu ──────────────────────╮
-│ [1] 🌳 View Intra-File Tree       [2] ⚡ Inspect File Symbols        │
-│ [3] 🔗 View Dependencies (In/Out) [4] 💥 Trace Blast Radius         │
-│ [5] ⚠️  Detect Circular Imports   [6] 📊 Full Repository Dashboard  │
-│ [7] 🌐 Export Living Atlas HTML   [8] 💾 Export JSON Report         │
-│ [?] 🛠️  Show Commands Reference    [q] Exit                          │
-╰─────────────────────────────────────────────────────────────────────╯
-Select an action [1-8, ?, q]: 
-```
-
-- **Fuzzy Search**: When selecting `[1]`, `[2]`, or `[3]`, type any substring of the file name (e.g. `session`) to filter matching files.
-- **Blast Radius Lookup**: Select `[4]` and type any symbol name (e.g. `subapp`) or UUID.
-- **Cycle Inspection**: Select `[5]` to immediately check circular dependencies.
-
----
-
-## 5. Living Codebase Atlas Guide
-
-When you generate an HTML report (`--html atlas.html`) or launch the daemon (`--serve`), opening the application in any modern browser delivers Karuvi's complete **Living Codebase Atlas**:
-
-```text
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  🗺️ Karuvi Atlas   [◉ Overview] [🗺️ Architecture] [🕸️ Graph] [📁 Code] [📖 Docs]  │
-├──────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│   ◉ OVERVIEW            🗺️ ARCHITECTURE         🕸️ GRAPH CANVAS                  │
-│   • Codebase Vitals     • Components & Roles    • Multi-Scale Cluster Unfolding  │
-│   • Start Here Entry    • Cross-Component Flows • Call / Import / Ref Filters    │
-│   • Cycle Radar         • Confidence Scores     • Real-time Evidence Inspector   │
-│                                                                                  │
-│   📁 CODE EXPLORER      📖 KNOWLEDGE DOCS       🔍 GLOBAL SEARCH (Cmd+K)         │
-│   • Role Badges         • Deterministic Docs    • Instant symbol & file search   │
-│   • AST Code Flow       • Verified Facts Only   • Keyboard-driven navigation     │
-└──────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### The 5 Unified Modes
-
-#### 1. ◉ Overview Dashboard
-- **Codebase Vitals**: Real-time counters for modules, components, indexed symbols, inter-module edges, and circular dependency loops.
-- **"Start Here" Entry Points**: Ranked entry candidate modules calculated via low incoming coupling and broad downstream reach ($low\_incoming \times reach$).
-- **Key Architecture Flows**: Detected multi-component execution journeys from root entrypoints through core layers to persistence leaves.
-
-#### 2. 🗺️ Architecture Reconstruction
-- **Component Cards**: Displays automatically reconstructed architectural boundaries (e.g. `api-services`, `database`, `auth`).
-- **Evidence Confidence Scores**: Transparent scoring (e.g. `85%`) based on directory structure, Louvain graph community alignment, and naming cohesion.
-- **Cross-Component Dependencies**: Upstream components imported and downstream dependents served.
-- **High-Level Flows**: Shortest dependency paths across condensed architectural DAGs.
-
-#### 3. 🕸️ Graph Explorer & Multi-Scale Unfolding
-- **Multi-Level Zoom & Unfolding**:
-  - Starts at the **Component Level** for a calm, clutter-free architecture overview.
-  - **Double-click** or click **Unfold into Modules ➔** on any component node to smoothly expand that component into its constituent modules.
-  - Inter-component edges dynamically rewire to module-level edges!
-- **Edge Type Filtering**: Toggle between **Imports**, **Symbol Calls**, and **Inheritance** edges.
-- **Focus & Dimming**: Clicking any node isolates it, highlighting inbound dependents (green) and outbound dependencies (cyan) while dimming unconnected nodes.
-- **Evidence Inspector**: Right-hand panel revealing metrics (in/out degree, PageRank, betweenness), member symbols, and blast radius.
-
-#### 4. 📁 Code Explorer & AST Tree
-- **Annotated File Tree**: Structural role badges for every file:
-  - `🚪 Entry Candidate`: High reach, low incoming coupling.
-  - `⚡ Hub`: High connectivity / coordinating center.
-  - `🌉 Bridge`: Critical bottleneck bridging distinct components.
-  - `🍃 Leaf`: Pure utility or database layer with zero outbound internal imports.
-- **AST Hierarchy & Code Flow**: Interactive tree view displaying classes, methods, functions, lexical scopes, and variable references with line numbers.
-
-#### 5. 📖 Knowledge / Docs
-- **Verified Facts Only**: 100% generated from AST pointers, import graphs, and metrics with zero LLM hallucination risk.
-- **Copyable Markdown**: Includes structural summaries, component catalogues, and architecture diagrams.
-
-### Keyboard Shortcuts
-
-- **`Cmd + K`** / **`Ctrl + K`**: Open Global Search modal.
-- **`Esc`**: Close search modal or deselect active canvas node.
-- **`1` - `5`**: Jump between tabs (Overview, Architecture, Graph, Code, Docs).
-
----
-
-## 6. Karuvi Daemon & HTTP API
-
-Karuvi includes a stateful FastAPI server that holds the repository graph in memory for IDE plugins, code review bots, and CI integrations.
+## 6. Karuvi Daemon & REST API Reference
 
 ### Starting the Daemon
+
+Karuvi embeds a high-performance **FastAPI** daemon server:
+
 ```bash
-uv run karuvi /path/to/repo --serve
-# or
-uv run uvicorn main:app --port 8000
+uv run karuvi /path/to/target-repo --serve
 ```
+*The daemon starts on `http://127.0.0.1:8000` by default.*
 
-### Daemon API Endpoints
+### API Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | **Interactive Living Codebase Atlas Web UI** |
-| `GET` | `/visualize` | Interactive Living Codebase Atlas Web UI (alias) |
-| `GET` | `/architecture` | Reconstructed architecture model (`components`, `boundaries`, `roles`, `flows`) as JSON |
-| `POST` | `/init` | Initialize repository root: `{"project_root": "/path/to/repo"}` |
-| `GET` | `/status` | Returns number of indexed files and parse count (JSON) |
-| `GET` | `/graph` | Whole-repository dependency graph with nodes, edges, and cross-references |
-| `GET` | `/export` | Full repository analysis and AST dump as JSON |
-| `GET` | `/files` | Lists all parsed files and module names |
-| `GET` | `/dependencies` | Query symbol references in a file: `/dependencies?file=src/app.py&start=10&end=25` |
-| `GET` | `/tree` | Returns internal AST dependency tree for a file: `/tree?file=src/app.py` |
-| `GET` | `/scopes` | Returns lexical scope hierarchy for a file: `/scopes?file=src/app.py` |
-| `GET` | `/functions` | Returns all functions declared in a file |
-| `GET` | `/classes` | Returns all classes and methods in a file |
-| `GET` | `/variables` | Search for variable declarations by name across all modules |
+| Method | Endpoint | Description | Query / Body Params |
+|---|---|---|---|
+| `GET` | `/` | Serves the Living Codebase Atlas Single Page Application | — |
+| `GET` | `/visualize` | Alias to `/` for Living Codebase Atlas Web UI | — |
+| `GET` | `/architecture` | Complete reconstructed architecture model (`components`, `roles`, `flows`) as JSON | — |
+| `POST` | `/init` | Initialize or switch target repository directory | `{"project_root": "/path/to/repo"}` |
+| `GET` | `/status` | Server status and indexed module count | — |
+| `GET` | `/graph` | Entire dependency graph (nodes, multigraph edges, cross-references) | — |
+| `GET` | `/export` | Full AST and static analysis dump as JSON | — |
+| `GET` | `/files` | List of all indexed files and module identifiers | — |
+| `GET` | `/dependencies` | Query symbol references within a file across a line range | `?file=src/app.py&start=1&end=100` |
+| `GET` | `/tree` | Retrieve AST code-flow tree for a specific file | `?file=src/app.py` |
+| `GET` | `/scopes` | Return lexical scope hierarchy for a file | `?file=src/app.py` |
+| `GET` | `/functions` | Return all function definitions and signatures in a file | `?file=src/app.py` |
+| `GET` | `/classes` | Return all class and method definitions in a file | `?file=src/app.py` |
+| `GET` | `/variables` | Search for variable declarations and usages across all modules | `?name=config` |
 
 ---
 
-## 7. Programmatic Python API
+## 7. Programmatic Python SDK API
 
-You can import and use Karuvi directly in your Python scripts:
+Karuvi can be imported as a library in your Python scripts, CI automation pipelines, or custom tooling:
 
 ```python
 from pathlib import Path
 import get_tree
 from repo_graph import RepoGraphBuilder
 from pointers import GlobalIndex
-from rich.console import Console
+from architecture.analyzer import ArchitectureAnalyzer
+from architecture.visualizer import generate_atlas_html, build_unified_payload
 
-# 1. Parse a single file
-mod = get_tree.parse_file("src/microdot/session.py")
-print(f"Functions: {[f.name for f in mod.functions]}")
-print(f"Classes: {[c.name for c in mod.classes]}")
+repo_path = Path("/path/to/my-repo")
 
-# 2. Render intra-file AST tree to terminal
-Console().print(mod.code_flow._print())
-
-# 3. Build whole-repository graph
-repo_path = Path("/home/tarun/microdot-main")
+# 1. Initialize global symbol index and parse repository files
 global_index = GlobalIndex()
 global_index.add_search_path(repo_path)
 
 parsed_modules = {}
-for p in repo_path.glob("**/*.py"):
-    rel_key = str(p.relative_to(repo_path))
-    parsed_modules[rel_key] = get_tree.parse_file(str(p), global_index=global_index)
+for py_file in repo_path.glob("**/*.py"):
+    rel_path = str(py_file.relative_to(repo_path))
+    parsed_modules[rel_path] = get_tree.parse_file(str(py_file), global_index=global_index)
 
+# 2. Build Stage 1 Dependency & Multi-Relational Graph
 builder = RepoGraphBuilder(repo_path, parsed_modules, global_index=global_index)
 builder.build()
 
-# 4. Check for cycles
-print(f"Cycles: {builder.cycles}")
+print(f"Total modules indexed: {len(builder.graph.nodes)}")
+print(f"Circular dependencies detected: {len(builder.cycles)}")
 
-# 5. Export Sourcetrail HTML
-Path("output_graph.html").write_text(builder.render_html(), encoding="utf-8")
+# 3. Run Stage 2 Architecture Reconstruction Analyzer
+analyzer = ArchitectureAnalyzer(repo_path)
+arch_model = analyzer.analyze(builder)
+
+print(f"Discovered components: {[c.name for c in arch_model.components.values()]}")
+print(f"Top entry point: {arch_model.entrypoints[0]['module']}")
+
+# 4. Generate Living Codebase Atlas Standalone HTML
+html_content = generate_atlas_html(builder, arch_model)
+Path("my_atlas.html").write_text(html_content, encoding="utf-8")
+print("✔ Living Codebase Atlas exported successfully!")
 ```
 
 ---
 
-## 8. Troubleshooting & FAQ
+## 8. Architecture & Design Principles
 
-### Q: Why does Karuvi say "No Python files found"?
-Make sure you pass the root directory of the repository. If running from within the repository itself, you can simply run:
+```
+karuvi/
+├── architecture/                     # Stage 2: Architectural Reconstruction
+│   ├── analyzer.py                   # Master orchestrator combining all stages
+│   ├── boundaries.py                 # Architectural boundary enforcement & validation
+│   ├── communities.py                # Louvain modularity & directory-affinity clustering
+│   ├── component_graph.py            # Component-level dependency contraction
+│   ├── components.py                 # Component naming & heuristic role synthesis
+│   ├── documentation.py              # Deterministic Markdown architecture generation
+│   ├── entrypoints.py                # Structural entry-point ranking (coupling vs reach)
+│   ├── flows.py                      # Transitive cross-subsystem flow tracing
+│   ├── metrics.py                    # Graph centrality & PageRank calculation
+│   ├── models.py                     # Pydantic-style dataclasses & models
+│   ├── module_graph.py               # Directed module multigraph builder
+│   ├── onboarding.py                 # Multi-tier cognitive onboarding roadmap engine
+│   ├── roles.py                      # Structural role classification algorithms
+│   ├── serialization.py              # JSON encoder/decoder for models
+│   └── visualizer.py                 # Living Codebase Atlas HTML & JS visualizer
+├── cli.py                            # CLI command parser & Rich terminal interface
+├── get_tree.py                       # Tree-sitter intra-file AST parser
+├── pointers.py                       # Global symbol cross-referencing & indexing
+├── repo_graph.py                     # Stage 1 Whole-repository multigraph builder
+├── returns.py                        # AST deptree dictionary serializer
+├── main.py                           # FastAPI daemon & HTTP REST service
+└── tests/                            # Comprehensive unit & integration test suite
+```
+
+### Core Design Rules
+1. **Deterministic Execution**: Given the same codebase, Karuvi generates identical outputs, AST UUIDs, and architectural metrics every time.
+2. **Defensive Parsing**: Tree-sitter guarantees that files with syntax errors or partial edits do not crash the crawl; healthy parts of the AST are extracted cleanly.
+3. **Pure Python & Zero Node.js Requirement**: The Living Codebase Atlas compiles into a single HTML file with embedded scripts, meaning clients need zero node servers or npm installations to inspect their projects.
+
+---
+
+## 9. Troubleshooting & FAQ
+
+### Q: Why does Karuvi report "No Python files found"?
+Ensure you provide the root folder of the repository. If you are already inside the target directory, simply run:
 ```bash
 uv run karuvi .
 ```
 
-### Q: Are virtual environments and third-party libraries excluded?
-Yes. Karuvi automatically skips directories matching:
-`.venv`, `venv`, `__pycache__`, `.git`, `node_modules`, `.mypy_cache`, `.pytest_cache`, `dist`, `build`, and `.eggs`.
+### Q: Are virtual environments and third-party dependencies ignored?
+Yes. Karuvi automatically ignores folders matching:
+`.venv`, `venv`, `env`, `__pycache__`, `.git`, `node_modules`, `.mypy_cache`, `.pytest_cache`, `dist`, `build`, and `.eggs`.
 
-### Q: How are third-party imports displayed?
-Imports that do not resolve to internal `.py` files in the repository (e.g. `import requests` or `import os`) are classified as **External Dependencies**. In the HTML visualizer, they appear as dashed pill nodes and can be toggled on or off with the **External** button.
-
-### Q: Can I run Karuvi in headless or CI environments?
-Yes. Pass `--json <file.json>` or `--cycles` to run headless checks:
+### Q: How can I run Karuvi in headless CI/CD pipelines?
+Use non-interactive flags like `--cycles` or `--arch-json`:
 ```bash
+# Check for circular dependency loops in CI
 uv run karuvi /path/to/repo --cycles
+
+# Export architectural model JSON
+uv run karuvi /path/to/repo -a --arch-json arch.json
 ```
-This returns exit code 0 and logs circular loops without prompting for interactive input.
+Both commands terminate with exit code `0` on completion without waiting for user prompts.
+
+### Q: How do I share the Living Codebase Atlas with teammates?
+Simply share the generated `karuvi_atlas.html` file (e.g. via Slack, email, GitHub Pages, or S3 bucket). It is 100% self-contained and opens instantly in Google Chrome, Mozilla Firefox, Safari, or Microsoft Edge without any web server.
 
 ---
 
-*Enjoy inspecting your Python codebases with Karuvi!*
+## 10. License
+
+Karuvi is open-source software licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
