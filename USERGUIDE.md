@@ -236,7 +236,6 @@ Produces a completely self-contained, dark-mode single-page HTML application (ze
 2. **🗺️ Architecture**: Reconstructed components, confidence scores, structural roles, and cross-component flows.
 3. **🕸️ Graph Explorer**: Multi-scale canvas with dynamic cluster unfolding (Component ➔ Modules ➔ Symbols).
 4. **📁 Code Explorer**: Interactive file tree with role badges and AST code flow hierarchy.
-5. **📖 Knowledge / Docs**: Deterministic DeepWiki-style factual documentation.
 
 #### 2. Full Analysis JSON (`--json`)
 ```bash
@@ -295,7 +294,7 @@ When you generate an HTML report (`--html atlas.html`) or launch the daemon (`--
 │   • Cycle Radar         • Confidence Scores     • Real-time Evidence Inspector   │
 │                                                                                  │
 │   📁 CODE EXPLORER      📖 KNOWLEDGE DOCS       🔍 GLOBAL SEARCH (Cmd+K)         │
-│   • Role Badges         • Deterministic DeepWiki• Instant symbol & file search   │
+│   • Role Badges         • Deterministic Docs    • Instant symbol & file search   │
 │   • AST Code Flow       • Verified Facts Only   • Keyboard-driven navigation     │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -331,7 +330,6 @@ When you generate an HTML report (`--html atlas.html`) or launch the daemon (`--
 - **AST Hierarchy & Code Flow**: Interactive tree view displaying classes, methods, functions, lexical scopes, and variable references with line numbers.
 
 #### 5. 📖 Knowledge / Docs
-- **Deterministic DeepWiki-Style Documentation**: Fully factual, pre-computed architectural documentation.
 - **Verified Facts Only**: 100% generated from AST pointers, import graphs, and metrics with zero LLM hallucination risk.
 - **Copyable Markdown**: Includes structural summaries, component catalogues, and architecture diagrams.
 
@@ -361,7 +359,6 @@ uv run uvicorn main:app --port 8000
 | `GET` | `/` | **Interactive Living Codebase Atlas Web UI** |
 | `GET` | `/visualize` | Interactive Living Codebase Atlas Web UI (alias) |
 | `GET` | `/architecture` | Reconstructed architecture model (`components`, `boundaries`, `roles`, `flows`) as JSON |
-| `GET` | `/architecture/doc` | Deterministic DeepWiki-style architecture documentation (Markdown) |
 | `POST` | `/init` | Initialize repository root: `{"project_root": "/path/to/repo"}` |
 | `GET` | `/status` | Returns number of indexed files and parse count (JSON) |
 | `GET` | `/graph` | Whole-repository dependency graph with nodes, edges, and cross-references |

@@ -567,7 +567,7 @@ def get_architecture():
 @app.get(
     "/architecture/doc",
     summary="Architecture documentation (Markdown)",
-    description="Return deterministic DeepWiki-style architecture documentation.",
+    description="Return architecture documentation.",
 )
 def get_architecture_doc():
     _require_project()
