@@ -70,6 +70,7 @@ def test_build_unified_payload(fixtures_dir):
         assert "role" in m
         assert "in_degree" in m
         assert "out_degree" in m
+        assert "source_code" in m
 
     # 5. Entry points and flows
     assert len(payload["entrypoints"]) >= 1
@@ -78,7 +79,18 @@ def test_build_unified_payload(fixtures_dir):
     assert "entry_score" in top_entry
     assert "evidence" in top_entry
 
-    # 6. Documentation
+    # 6. DeepWiki-Pro-Max: Onboarding Course & DeepWiki Explanations
+    assert "onboarding" in payload
+    assert "steps" in payload["onboarding"]
+    assert len(payload["onboarding"]["steps"]) == 4
+
+    assert "deepwiki" in payload
+    assert "repository" in payload["deepwiki"]
+    assert "architecture" in payload["deepwiki"]
+    assert "modules" in payload["deepwiki"]
+    assert len(payload["deepwiki"]["modules"]) == 4
+
+    # 7. Documentation
     assert len(payload["documentation_md"]) > 100
     assert "# Repository Architecture" in payload["documentation_md"]
 
