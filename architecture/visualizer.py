@@ -221,6 +221,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
   <style>
     :root {
       --bg-canvas: #090d16;
@@ -1289,6 +1290,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Interactive Application Logic -->
   <script>
     (function() {
+      // Monaco Editor initialization
+      let monacoEditor = null;
+      let isMonacoReady = false;
+      if (window.require) {
+          require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+          require(['vs/editor/editor.main'], function() {
+              isMonacoReady = true;
+          });
+      }
+
       const data = window.KARUVI_DATA;
       if (!data) return;
 
@@ -1671,32 +1682,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
         html += `</div>`;
         
-        fileTreePane.innerHTML = html;
+        document.getElementById('code-file-tree').innerHTML = html;
       }
 
-      function highlightPythonSyntax(rawText) {
-        if (!rawText) return '<em>(Source code empty or file not on disk)</em>';
-        const lines = rawText.split('\\n');
-        return lines.map((line, idx) => {
-          let escaped = line
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-
-          // Basic fast syntax highlight
-          escaped = escaped.replace(/(#.*$)/g, '<span class="syntax-cmt">$1</span>');
-          escaped = escaped.replace(/\\b(def)\\s+([a-zA-Z0-9_]+)/g, '<span class="syntax-kw">$1</span> <span class="syntax-fn">$2</span>');
-          escaped = escaped.replace(/\\b(class)\\s+([a-zA-Z0-9_]+)/g, '<span class="syntax-kw">$1</span> <span class="syntax-cls">$2</span>');
-          escaped = escaped.replace(/\\b(from|import|return|if|else|elif|for|while|try|except|finally|with|as|in|is|not|and|or|None|True|False)\\b/g, '<span class="syntax-kw">$1</span>');
-          escaped = escaped.replace(/(".*?"|'.*?')/g, '<span class="syntax-str">$1</span>');
-
-          return `
-            <tr>
-              <td class="code-line-text">${escaped}</td>
-            </tr>
-          `;
-        }).join('');
-      }
 
       window.selectModule = function(modId) {
         switchTab('code');
@@ -1713,9 +1701,35 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         const codeContentEl = document.getElementById('code-viewer-content');
         if (mod.source_code) {
-          codeContentEl.innerHTML = `<table class="code-table">${highlightPythonSyntax(mod.source_code)}</table>`;
+          if (isMonacoReady) {
+            if (!monacoEditor) {
+                codeContentEl.innerHTML = '';
+                monacoEditor = monaco.editor.create(codeContentEl, {
+                    value: mod.source_code,
+                    language: 'python',
+                    theme: 'vs-dark',
+                    readOnly: true,
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: "'Fira Code', monospace",
+                    scrollBeyondLastLine: false,
+                    padding: { top: 16, bottom: 16 }
+                });
+            } else {
+                monacoEditor.setValue(mod.source_code);
+                monacoEditor.setScrollTop(0);
+            }
+          } else {
+            codeContentEl.innerHTML = '<div style="padding: 20px; color: #fff; text-align: center; font-family: monospace;">Loading Monaco Editor...</div>';
+            setTimeout(() => window.selectModule(modId), 100);
+          }
         } else {
           // Fallback summary if source code not cached
+          if (monacoEditor) {
+              monacoEditor.dispose();
+              monacoEditor = null;
+          }
           codeContentEl.innerHTML = `
             <div style="padding: 20px;">
               <h3 style="color: #fff; margin-bottom: 12px;">Module Inspection: ${mod.path}</h3>
