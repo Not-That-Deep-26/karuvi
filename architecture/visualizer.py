@@ -219,23 +219,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Google Fonts & Vis-Network -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Glacial+Indifference:wght@400;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
   <style>
     :root {
-      --bg-canvas: #090d16;
-      --bg-surface: #0f172a;
-      --bg-card: #152037;
-      --bg-card-hover: #1c2b4a;
-      --border: #1e293b;
-      --border-subtle: #162238;
-      --border-glow: rgba(56, 189, 248, 0.4);
+      /* Minimalist Monochrome Dark Base */
+      --bg-canvas: #121212;
+      --bg-surface: #1e1e1e;
+      --bg-card: #252525;
+      --bg-card-hover: #2e2e2e;
+      --border: #333333;
+      --border-subtle: #222222;
+      --border-glow: transparent;
       
-      --text: #f8fafc;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
+      --text: #eeeeee;
+      --text-secondary: #a0a0a0;
+      --text-muted: #777777;
+      --text-heading: #ffffff;
       
+      /* Maintained Graph Colors */
       --accent-blue: #38bdf8;
       --accent-cyan: #22d3ee;
       --accent-purple: #c084fc;
@@ -248,14 +251,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       --role-hub: #c084fc;
       --role-leaf: #10b981;
       --role-cycle: #f43f5e;
-      --role-isolated: #64748b;
+      --role-isolated: #777777;
+      
+      /* Shadows for elevation */
+      --shadow-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+      --shadow-2: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+      
+      /* Typography */
+      --font-display: 'Glacial Indifference', 'Google Sans', 'Source Sans 3', sans-serif;
+      --font-body: 'Source Sans 3', 'Open Sans', sans-serif;
+      --font-mono: 'Fira Code', 'Monaco', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--bg-canvas);
       color: var(--text);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: var(--font-body);
       height: 100vh;
       overflow: hidden;
       display: flex;
@@ -282,7 +294,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     .brand-logo {
-      font-weight: 800;
+      font-weight: 700; font-family: var(--font-display);
       font-size: 17px;
       letter-spacing: -0.5px;
       background: linear-gradient(135deg, #38bdf8 0%, #a855f7 100%);
@@ -468,7 +480,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     .stat-val {
       font-size: 24px;
-      font-weight: 800;
+      font-weight: 700; font-family: var(--font-display);
       font-family: 'Fira Code', monospace;
       color: var(--accent-blue);
     }
@@ -1069,7 +1081,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       border-color: var(--accent-blue);
     }
 
-    .docs-container h1 { font-size: 26px; font-weight: 800; margin-bottom: 16px; color: #fff; }
+    .docs-container h1 { font-size: 26px; font-weight: 700; font-family: var(--font-display); margin-bottom: 16px; color: #fff; }
     .docs-container h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 12px; color: var(--accent-blue); border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px; }
     .docs-container h3 { font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px; color: #fff; }
     .docs-container p { font-size: 14px; color: var(--text-secondary); margin-bottom: 14px; }
@@ -1134,7 +1146,62 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .search-res-item:hover {
       background: var(--bg-card-hover);
     }
-  </style>
+  
+    .ast-tree-pane {
+      width: 320px;
+      border-right: 1px solid var(--border-subtle);
+      background: var(--bg-canvas);
+      overflow-y: auto;
+      padding: 16px;
+      flex-shrink: 0;
+    }
+    .ast-node {
+      display: flex;
+      flex-direction: column;
+      margin-left: 12px;
+      border-left: 1px solid var(--border-subtle);
+      padding-left: 12px;
+      margin-top: 6px;
+      position: relative;
+    }
+    .ast-node::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 0;
+      width: 8px;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+    .ast-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .ast-header:hover {
+      background: rgba(131, 148, 150, 0.1);
+    }
+    .ast-type {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .ast-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+    </style>
 </head>
 <body>
   <!-- Header App Bar -->
@@ -1255,6 +1322,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="tab-view" id="tab-code">
         <div class="code-layout">
           <div class="file-tree-pane" id="code-file-tree"></div>
+          <div class="ast-tree-pane" id="code-ast-tree">
+            <div style="color: var(--text-muted); font-size: 13px; font-family: var(--font-body);">Select a module to view AST</div>
+          </div>
           <div class="code-viewer-pane" id="code-viewer-pane">
             <div class="code-viewer-header" id="code-viewer-header">
               <div style="font-family: 'Fira Code', monospace; font-size: 13px; font-weight: 600; color: #fff;" id="code-file-path">Select a file from the tree</div>
@@ -1296,7 +1366,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       if (window.require) {
           require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
           require(['vs/editor/editor.main'], function() {
+              monaco.editor.defineTheme('monochromeDark', {
+                  base: 'vs-dark',
+                  inherit: true,
+                  rules: [
+                      { background: '121212' }
+                  ],
+                  colors: {
+                      'editor.background': '#121212',
+                      'editor.foreground': '#eeeeee',
+                      'editorLineNumber.foreground': '#555555',
+                      'editor.lineHighlightBackground': '#1e1e1e',
+                      'editorCursor.foreground': '#ffffff',
+                      'editor.selectionBackground': '#2e2e2e'
+                  }
+              });
+              
               isMonacoReady = true;
+          
           });
       }
 
@@ -1588,7 +1675,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         let html = '';
-        const lineLoc = (node.variable && node.variable.reference) ? ` <span style="color: var(--text-muted); font-size: 9px; margin-left: 6px; opacity: 0.5; font-weight: normal;">L${node.variable.reference.line}</span>` : '';
+        const lineLoc = (node.variable && node.variable.reference) ? ` <span onclick=\"if(window.monacoEditor){event.stopPropagation(); window.monacoEditor.revealLineInCenter(${node.variable.reference.line}); window.monacoEditor.setPosition({lineNumber: ${node.variable.reference.line}, column: 1}); window.monacoEditor.focus();}\" style=\"color: var(--accent-blue); font-size: 9px; margin-left: 6px; opacity: 0.8; font-weight: 500; cursor: pointer; text-decoration: underline;\" title=\"Jump to line ${node.variable.reference.line}\">L${node.variable.reference.line}</span>` : '';
 
         const isRoot = depth === 0;
         const uuidHtml = uuid ? `<div class="ast-uuid">${uuid}</div>` : '';
@@ -1596,7 +1683,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if ((node.children && node.children.length > 0) || depsStr || uuid) {
           html += `
             <div class="${isRoot ? '' : 'ast-item-wrapper'}">
-              <details class="ast-node" style="margin-top: ${isRoot ? '0' : '2px'};" ${depth < 3 ? 'open' : ''}>
+              <details class="ast-node" style="margin-top: ${isRoot ? '0' : '2px'};" >
                 <summary class="ast-summary">
                   <div style="display: inline-flex; align-items: center; vertical-align: middle;">
                       ${badgeHtml}
@@ -1704,10 +1791,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           if (isMonacoReady) {
             if (!monacoEditor) {
                 codeContentEl.innerHTML = '';
-                monacoEditor = monaco.editor.create(codeContentEl, {
+                window.monacoEditor = monacoEditor = monaco.editor.create(codeContentEl, {
                     value: mod.source_code,
                     language: 'python',
-                    theme: 'vs-dark',
+                    theme: 'monochromeDark',
                     readOnly: true,
                     automaticLayout: true,
                     minimap: { enabled: false },
@@ -1717,7 +1804,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     padding: { top: 16, bottom: 16 }
                 });
             } else {
-                monacoEditor.setValue(mod.source_code);
+                window.monacoEditor = monacoEditor;
+                  monacoEditor.setValue(mod.source_code);
                 monacoEditor.setScrollTop(0);
             }
           } else {
