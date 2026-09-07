@@ -1,0 +1,241 @@
+{
+  "wiki_structure": {
+    "id": "root",
+    "title": "karuvi Architecture Wiki",
+    "description": "DeepWiki architectural synthesis and subsystem breakdown for karuvi.",
+    "pages": [
+      {
+        "id": "architecture-overview",
+        "title": "System Architecture & Overview",
+        "content": "",
+        "filePaths": [
+          "cli.py",
+          "main.py",
+          "deps.py",
+          "get_tree.py",
+          "pointers.py",
+          "architecture/__init__.py",
+          "architecture/analyzer.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "core-components",
+          "data-flows"
+        ],
+        "parentSection": "sec-overview"
+      },
+      {
+        "id": "core-components",
+        "title": "Core Components & Subsystems",
+        "content": "",
+        "filePaths": [
+          "deps.py",
+          "get_tree.py",
+          "pointers.py",
+          "repo_graph.py",
+          "returns.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview",
+          "interfaces-and-cli"
+        ],
+        "parentSection": "sec-components"
+      },
+      {
+        "id": "data-flows",
+        "title": "Data Management & Dependency Flows",
+        "content": "",
+        "filePaths": [
+          "deps.py",
+          "get_tree.py",
+          "pointers.py",
+          "repo_graph.py",
+          "architecture/__init__.py",
+          "architecture/analyzer.py"
+        ],
+        "importance": "medium",
+        "relatedPages": [
+          "core-components"
+        ],
+        "parentSection": "sec-flows"
+      },
+      {
+        "id": "interfaces-and-cli",
+        "title": "Interfaces, CLI & Daemon Architecture",
+        "content": "",
+        "filePaths": [
+          "cli.py",
+          "main.py",
+          "tests/architecture/test_cli_commands.py",
+          "tests/fixtures/simple_layered/api/main.py",
+          "tests/fixtures/split_utils/api/main.py",
+          "deps.py",
+          "get_tree.py"
+        ],
+        "importance": "high",
+        "relatedPages": [
+          "architecture-overview"
+        ],
+        "parentSection": "sec-interfaces"
+      },
+      {
+        "id": "deepwiki-cartography",
+        "title": "DeepWiki Architecture Cartography Engine",
+        "content": "",
+        "filePaths": [
+          "architecture/__init__.py",
+          "architecture/analyzer.py",
+          "architecture/boundaries.py",
+          "architecture/communities.py",
+          "architecture/component_graph.py",
+          "architecture/components.py"
+        ],
+        "importance": "medium",
+        "relatedPages": [
+          "architecture-overview"
+        ],
+        "parentSection": "sec-components"
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec-overview",
+        "title": "System Overview",
+        "pages": [
+          "architecture-overview"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-components",
+        "title": "Core Subsystems",
+        "pages": [
+          "core-components",
+          "deepwiki-cartography"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-flows",
+        "title": "Data & Control Flows",
+        "pages": [
+          "data-flows"
+        ],
+        "subsections": null
+      },
+      {
+        "id": "sec-interfaces",
+        "title": "Interfaces & Services",
+        "pages": [
+          "interfaces-and-cli"
+        ],
+        "subsections": null
+      }
+    ],
+    "rootSections": [
+      "sec-overview",
+      "sec-components",
+      "sec-flows",
+      "sec-interfaces"
+    ]
+  },
+  "generated_pages": {
+    "architecture-overview": {
+      "id": "architecture-overview",
+      "title": "System Architecture & Overview",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [cli.py](#code:cli.py)\n- [main.py](#code:main.py)\n- [deps.py](#code:deps.py)\n- [get_tree.py](#code:get_tree.py)\n- [pointers.py](#code:pointers.py)\n- [architecture/__init__.py](#code:architecture/__init__.py)\n- [architecture/analyzer.py](#code:architecture/analyzer.py)\n</details>\n\n# System Architecture & Overview\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **System Architecture & Overview** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `cli.py`\n- **Lines**: 1195\n- **Source Reference**: Sources: [cli.py:1-30](#code:cli.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `cli`.\n\n#### `main.py`\n- **Lines**: 659\n- **Source Reference**: Sources: [main.py:1-30](#code:main.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `deps.py`\n- **Lines**: 247\n- **Source Reference**: Sources: [deps.py:1-30](#code:deps.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `deps`.\n\n#### `get_tree.py`\n- **Lines**: 903\n- **Source Reference**: Sources: [get_tree.py:1-30](#code:get_tree.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `get_tree`.\n\n#### `pointers.py`\n- **Lines**: 139\n- **Source Reference**: Sources: [pointers.py:1-30](#code:pointers.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `pointers`.\n\n#### `architecture/__init__.py`\n- **Lines**: 72\n- **Source Reference**: Sources: [architecture/__init__.py:1-30](#code:architecture/__init__.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `__init__`.\n\n#### `architecture/analyzer.py`\n- **Lines**: 253\n- **Source Reference**: Sources: [architecture/analyzer.py:1-30](#code:architecture/analyzer.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `analyzer`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `cli` | Sources: [cli.py](#code:cli.py) | Subsystem Module |\n| `main` | Sources: [main.py](#code:main.py) | Subsystem Module |\n| `deps` | Sources: [deps.py](#code:deps.py) | Subsystem Module |\n| `get_tree` | Sources: [get_tree.py](#code:get_tree.py) | Subsystem Module |\n| `pointers` | Sources: [pointers.py](#code:pointers.py) | Subsystem Module |\n| `__init__` | Sources: [architecture/__init__.py](#code:architecture/__init__.py) | Subsystem Module |\n| `analyzer` | Sources: [architecture/analyzer.py](#code:architecture/analyzer.py) | Subsystem Module |",
+      "filePaths": [
+        "cli.py",
+        "main.py",
+        "deps.py",
+        "get_tree.py",
+        "pointers.py",
+        "architecture/__init__.py",
+        "architecture/analyzer.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "core-components",
+        "data-flows"
+      ],
+      "parentSection": "sec-overview"
+    },
+    "core-components": {
+      "id": "core-components",
+      "title": "Core Components & Subsystems",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [deps.py](#code:deps.py)\n- [get_tree.py](#code:get_tree.py)\n- [pointers.py](#code:pointers.py)\n- [repo_graph.py](#code:repo_graph.py)\n- [returns.py](#code:returns.py)\n</details>\n\n# Core Components & Subsystems\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Core Components & Subsystems** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `deps.py`\n- **Lines**: 247\n- **Source Reference**: Sources: [deps.py:1-30](#code:deps.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `deps`.\n\n#### `get_tree.py`\n- **Lines**: 903\n- **Source Reference**: Sources: [get_tree.py:1-30](#code:get_tree.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `get_tree`.\n\n#### `pointers.py`\n- **Lines**: 139\n- **Source Reference**: Sources: [pointers.py:1-30](#code:pointers.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `pointers`.\n\n#### `repo_graph.py`\n- **Lines**: 1679\n- **Source Reference**: Sources: [repo_graph.py:1-30](#code:repo_graph.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `repo_graph`.\n\n#### `returns.py`\n- **Lines**: 293\n- **Source Reference**: Sources: [returns.py:1-30](#code:returns.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `returns`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `deps` | Sources: [deps.py](#code:deps.py) | Subsystem Module |\n| `get_tree` | Sources: [get_tree.py](#code:get_tree.py) | Subsystem Module |\n| `pointers` | Sources: [pointers.py](#code:pointers.py) | Subsystem Module |\n| `repo_graph` | Sources: [repo_graph.py](#code:repo_graph.py) | Subsystem Module |\n| `returns` | Sources: [returns.py](#code:returns.py) | Subsystem Module |",
+      "filePaths": [
+        "deps.py",
+        "get_tree.py",
+        "pointers.py",
+        "repo_graph.py",
+        "returns.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview",
+        "interfaces-and-cli"
+      ],
+      "parentSection": "sec-components"
+    },
+    "data-flows": {
+      "id": "data-flows",
+      "title": "Data Management & Dependency Flows",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [deps.py](#code:deps.py)\n- [get_tree.py](#code:get_tree.py)\n- [pointers.py](#code:pointers.py)\n- [repo_graph.py](#code:repo_graph.py)\n- [architecture/__init__.py](#code:architecture/__init__.py)\n- [architecture/analyzer.py](#code:architecture/analyzer.py)\n</details>\n\n# Data Management & Dependency Flows\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Data Management & Dependency Flows** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `deps.py`\n- **Lines**: 247\n- **Source Reference**: Sources: [deps.py:1-30](#code:deps.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `deps`.\n\n#### `get_tree.py`\n- **Lines**: 903\n- **Source Reference**: Sources: [get_tree.py:1-30](#code:get_tree.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `get_tree`.\n\n#### `pointers.py`\n- **Lines**: 139\n- **Source Reference**: Sources: [pointers.py:1-30](#code:pointers.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `pointers`.\n\n#### `repo_graph.py`\n- **Lines**: 1679\n- **Source Reference**: Sources: [repo_graph.py:1-30](#code:repo_graph.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `repo_graph`.\n\n#### `architecture/__init__.py`\n- **Lines**: 72\n- **Source Reference**: Sources: [architecture/__init__.py:1-30](#code:architecture/__init__.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `__init__`.\n\n#### `architecture/analyzer.py`\n- **Lines**: 253\n- **Source Reference**: Sources: [architecture/analyzer.py:1-30](#code:architecture/analyzer.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `analyzer`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `deps` | Sources: [deps.py](#code:deps.py) | Subsystem Module |\n| `get_tree` | Sources: [get_tree.py](#code:get_tree.py) | Subsystem Module |\n| `pointers` | Sources: [pointers.py](#code:pointers.py) | Subsystem Module |\n| `repo_graph` | Sources: [repo_graph.py](#code:repo_graph.py) | Subsystem Module |\n| `__init__` | Sources: [architecture/__init__.py](#code:architecture/__init__.py) | Subsystem Module |\n| `analyzer` | Sources: [architecture/analyzer.py](#code:architecture/analyzer.py) | Subsystem Module |",
+      "filePaths": [
+        "deps.py",
+        "get_tree.py",
+        "pointers.py",
+        "repo_graph.py",
+        "architecture/__init__.py",
+        "architecture/analyzer.py"
+      ],
+      "importance": "medium",
+      "relatedPages": [
+        "core-components"
+      ],
+      "parentSection": "sec-flows"
+    },
+    "interfaces-and-cli": {
+      "id": "interfaces-and-cli",
+      "title": "Interfaces, CLI & Daemon Architecture",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [cli.py](#code:cli.py)\n- [main.py](#code:main.py)\n- [tests/architecture/test_cli_commands.py](#code:tests/architecture/test_cli_commands.py)\n- [tests/fixtures/simple_layered/api/main.py](#code:tests/fixtures/simple_layered/api/main.py)\n- [tests/fixtures/split_utils/api/main.py](#code:tests/fixtures/split_utils/api/main.py)\n- [deps.py](#code:deps.py)\n- [get_tree.py](#code:get_tree.py)\n</details>\n\n# Interfaces, CLI & Daemon Architecture\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **Interfaces, CLI & Daemon Architecture** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `cli.py`\n- **Lines**: 1195\n- **Source Reference**: Sources: [cli.py:1-30](#code:cli.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `cli`.\n\n#### `main.py`\n- **Lines**: 659\n- **Source Reference**: Sources: [main.py:1-30](#code:main.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `tests/architecture/test_cli_commands.py`\n- **Lines**: 81\n- **Source Reference**: Sources: [tests/architecture/test_cli_commands.py:1-30](#code:tests/architecture/test_cli_commands.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `test_cli_commands`.\n\n#### `tests/fixtures/simple_layered/api/main.py`\n- **Lines**: 8\n- **Source Reference**: Sources: [tests/fixtures/simple_layered/api/main.py:1-8](#code:tests/fixtures/simple_layered/api/main.py:1-8)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `tests/fixtures/split_utils/api/main.py`\n- **Lines**: 5\n- **Source Reference**: Sources: [tests/fixtures/split_utils/api/main.py:1-5](#code:tests/fixtures/split_utils/api/main.py:1-5)\n- **Summary**: Encapsulates subsystem logic for `main`.\n\n#### `deps.py`\n- **Lines**: 247\n- **Source Reference**: Sources: [deps.py:1-30](#code:deps.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `deps`.\n\n#### `get_tree.py`\n- **Lines**: 903\n- **Source Reference**: Sources: [get_tree.py:1-30](#code:get_tree.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `get_tree`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `cli` | Sources: [cli.py](#code:cli.py) | Subsystem Module |\n| `main` | Sources: [main.py](#code:main.py) | Subsystem Module |\n| `test_cli_commands` | Sources: [tests/architecture/test_cli_commands.py](#code:tests/architecture/test_cli_commands.py) | Subsystem Module |\n| `main` | Sources: [tests/fixtures/simple_layered/api/main.py](#code:tests/fixtures/simple_layered/api/main.py) | Subsystem Module |\n| `main` | Sources: [tests/fixtures/split_utils/api/main.py](#code:tests/fixtures/split_utils/api/main.py) | Subsystem Module |\n| `deps` | Sources: [deps.py](#code:deps.py) | Subsystem Module |\n| `get_tree` | Sources: [get_tree.py](#code:get_tree.py) | Subsystem Module |",
+      "filePaths": [
+        "cli.py",
+        "main.py",
+        "tests/architecture/test_cli_commands.py",
+        "tests/fixtures/simple_layered/api/main.py",
+        "tests/fixtures/split_utils/api/main.py",
+        "deps.py",
+        "get_tree.py"
+      ],
+      "importance": "high",
+      "relatedPages": [
+        "architecture-overview"
+      ],
+      "parentSection": "sec-interfaces"
+    },
+    "deepwiki-cartography": {
+      "id": "deepwiki-cartography",
+      "title": "DeepWiki Architecture Cartography Engine",
+      "content": "<details>\n<summary>Relevant source files</summary>\n\nThe following files were used as context for generating this wiki page:\n\n- [architecture/__init__.py](#code:architecture/__init__.py)\n- [architecture/analyzer.py](#code:architecture/analyzer.py)\n- [architecture/boundaries.py](#code:architecture/boundaries.py)\n- [architecture/communities.py](#code:architecture/communities.py)\n- [architecture/component_graph.py](#code:architecture/component_graph.py)\n- [architecture/components.py](#code:architecture/components.py)\n</details>\n\n# DeepWiki Architecture Cartography Engine\n\nThis page documents the technical architecture, responsibilities, and implementation structure of **DeepWiki Architecture Cartography Engine** within the repository.\n\n## Subsystem Responsibilities & Overview\n\nThe components in this subsystem provide core infrastructure, data representations, and execution logic essential for repository operations.\n\n### Key Source Modules & Implementations\n\n#### `architecture/__init__.py`\n- **Lines**: 72\n- **Source Reference**: Sources: [architecture/__init__.py:1-30](#code:architecture/__init__.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `__init__`.\n\n#### `architecture/analyzer.py`\n- **Lines**: 253\n- **Source Reference**: Sources: [architecture/analyzer.py:1-30](#code:architecture/analyzer.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `analyzer`.\n\n#### `architecture/boundaries.py`\n- **Lines**: 74\n- **Source Reference**: Sources: [architecture/boundaries.py:1-30](#code:architecture/boundaries.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `boundaries`.\n\n#### `architecture/communities.py`\n- **Lines**: 117\n- **Source Reference**: Sources: [architecture/communities.py:1-30](#code:architecture/communities.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `communities`.\n\n#### `architecture/component_graph.py`\n- **Lines**: 96\n- **Source Reference**: Sources: [architecture/component_graph.py:1-30](#code:architecture/component_graph.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `component_graph`.\n\n#### `architecture/components.py`\n- **Lines**: 270\n- **Source Reference**: Sources: [architecture/components.py:1-30](#code:architecture/components.py:1-30)\n- **Summary**: Encapsulates subsystem logic for `components`.\n\n## Architectural Data Flow\n\nData within this subsystem flows through directed pipelines:\n\n1. **Ingestion & Invocation**: Calls originate from top-level entrypoints or client requests.\n2. **Transformation & Validation**: Inputs are validated and transformed into structured domain models.\n3. **Persistence & Serialization**: Outputs are formatted and dispatched to consumers or visualizations.\n\n## Interface & Configuration Summary\n\n| Component | Primary File | Role |\n| :--- | :--- | :--- |\n| `__init__` | Sources: [architecture/__init__.py](#code:architecture/__init__.py) | Subsystem Module |\n| `analyzer` | Sources: [architecture/analyzer.py](#code:architecture/analyzer.py) | Subsystem Module |\n| `boundaries` | Sources: [architecture/boundaries.py](#code:architecture/boundaries.py) | Subsystem Module |\n| `communities` | Sources: [architecture/communities.py](#code:architecture/communities.py) | Subsystem Module |\n| `component_graph` | Sources: [architecture/component_graph.py](#code:architecture/component_graph.py) | Subsystem Module |\n| `components` | Sources: [architecture/components.py](#code:architecture/components.py) | Subsystem Module |",
+      "filePaths": [
+        "architecture/__init__.py",
+        "architecture/analyzer.py",
+        "architecture/boundaries.py",
+        "architecture/communities.py",
+        "architecture/component_graph.py",
+        "architecture/components.py"
+      ],
+      "importance": "medium",
+      "relatedPages": [
+        "architecture-overview"
+      ],
+      "parentSection": "sec-components"
+    }
+  },
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "timestamp": 1788780558.1779335
+}
