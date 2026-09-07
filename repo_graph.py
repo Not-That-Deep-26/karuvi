@@ -416,13 +416,16 @@ class RepoGraphBuilder:
 
         return "\n".join(lines)
 
-    def render_html(self) -> str:
-        """Generate a Sourcetrail-grade interactive 3-pane HTML visualization."""
-        graph_data = self.to_dict()
-        graph_json = json.dumps(graph_data)
-        
-        # Build the HTML template emulating Sourcetrail
-        return SOURCETRAIL_HTML_TEMPLATE.replace("__GRAPH_JSON__", graph_json)
+    def render_html(self, arch_model: Any = None) -> str:
+        """Generate the Karuvi Living Codebase Atlas interactive HTML visualization."""
+        try:
+            from architecture.visualizer import generate_atlas_html
+            return generate_atlas_html(self, arch_model)
+        except Exception:
+            # Fallback to standard graph visualizer if architecture generation encounters an issue
+            graph_data = self.to_dict()
+            graph_json = json.dumps(graph_data)
+            return SOURCETRAIL_HTML_TEMPLATE.replace("__GRAPH_JSON__", graph_json)
 
 
 SOURCETRAIL_HTML_TEMPLATE = """<!DOCTYPE html>

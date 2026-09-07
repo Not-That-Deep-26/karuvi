@@ -134,8 +134,11 @@ def display_commands_table():
         ("--blast <uuid|name>", "Trace cross-module blast radius & call sites of a symbol", "uv run karuvi <repo> --blast verify_token"),
         ("--cycles", "Detect & display all circular dependency loops in ASCII", "uv run karuvi <repo> --cycles"),
         ("--graph", "Display ASCII connectivity matrix / dependency summary", "uv run karuvi <repo> --graph"),
+        ("--architecture, -a", "Reconstruct architecture components, roles & flows", "uv run karuvi <repo> -a"),
+        ("--arch-json <path>", "Export reconstructed architecture model to JSON", "uv run karuvi <repo> -a --arch-json arch.json"),
+        ("--arch-doc <path>", "Export deterministic Markdown architecture docs", "uv run karuvi <repo> -a --arch-doc ARCH.md"),
         ("--interactive, -i", "Launch interactive terminal explorer & AST navigator", "uv run karuvi <repo> -i"),
-        ("--html <file.html>", "Generate Sourcetrail-grade interactive 3-pane visualizer", "uv run karuvi <repo> --html graph.html"),
+        ("--html <file.html>", "Generate Living Codebase Atlas interactive web visualizer", "uv run karuvi <repo> --html atlas.html"),
         ("--json <file.json>", "Export complete repository analysis and AST dump", "uv run karuvi <repo> --json report.json"),
         ("--mermaid", "Print Mermaid.js dependency diagram to stdout", "uv run karuvi <repo> --mermaid"),
         ("--serve", "Launch FastAPI stateful daemon server on port 8000", "uv run karuvi <repo> --serve"),
@@ -353,6 +356,87 @@ def render_ascii_graph(builder: RepoGraphBuilder):
     console.print(table)
 
 
+def render_architecture_dashboard(model: Any):
+    """Render a comprehensive Rich terminal dashboard for reconstructed architecture."""
+    # Overview Panel
+    stats_table = Table.grid(padding=(0, 2))
+    stats_table.add_column(style="bold cyan")
+    stats_table.add_column(style="white")
+    stats_table.add_row("Analyzed Repository:", f"[bold white]{model.repository_root}[/bold white]")
+    stats_table.add_row("Modules:", f"[green]{len(model.modules)}[/green]")
+    stats_table.add_row("Architectural Components:", f"[magenta]{len(model.components)}[/magenta]")
+    stats_table.add_row("Structural Entry Points:", f"[yellow]{len(model.entry_points)}[/yellow]")
+    stats_table.add_row("Key Architectural Flows:", f"[cyan]{len(model.flows)}[/cyan]")
+    console.print(Panel(stats_table, title="[bold cyan]🏛️  Karuvi Architecture Reconstruction Engine[/bold cyan]", border_style="cyan"))
+
+    # Components Table
+    comp_table = Table(
+        title="📦 Reconstructed Architectural Components",
+        border_style="dim magenta",
+        header_style="bold magenta",
+        show_lines=True,
+    )
+    comp_table.add_column("Component", style="bold white", width=22)
+    comp_table.add_column("Confidence", justify="right", width=12)
+    comp_table.add_column("Modules", justify="center", width=9)
+    comp_table.add_column("Discovery Evidence", style="dim", width=26)
+    comp_table.add_column("Member Modules", style="cyan", width=36)
+    for comp in model.components.values():
+        conf_color = "green" if comp.confidence >= 0.7 else ("yellow" if comp.confidence >= 0.4 else "red")
+        mods_str = ", ".join(Path(m).name for m in comp.modules[:3])
+        if len(comp.modules) > 3:
+            mods_str += f" (+{len(comp.modules) - 3} more)"
+        comp_table.add_row(
+            comp.name,
+            f"[{conf_color}]{comp.confidence:.1%}[/{conf_color}]",
+            str(len(comp.modules)),
+            ", ".join(comp.discovery_methods),
+            mods_str,
+        )
+    console.print(comp_table)
+
+    # Entry Points Table
+    if model.entry_points:
+        ep_table = Table(
+            title="🚪 Structural Entry Points",
+            border_style="dim green",
+            header_style="bold green",
+            show_lines=True,
+        )
+        ep_table.add_column("Rank", style="dim", width=6)
+        ep_table.add_column("Module Path", style="bold green", width=34)
+        ep_table.add_column("Score", justify="right", width=8)
+        ep_table.add_column("Downstream Reach", style="white", width=22)
+        ep_table.add_column("Reachable Components", style="cyan", width=22)
+        for i, ep in enumerate(model.entry_points[:5], 1):
+            ev = ep["evidence"]
+            ep_table.add_row(
+                f"#{i}",
+                ep["module"],
+                f"{ep['entry_score']:.2f}",
+                f"{ev['reachable_modules']} modules",
+                f"{ev['reachable_components']} components",
+            )
+        console.print(ep_table)
+
+    # Flows Table
+    if model.flows:
+        flow_table = Table(
+            title="🌊 Representative High-Level Flows",
+            border_style="dim cyan",
+            header_style="bold cyan",
+            show_lines=True,
+        )
+        flow_table.add_column("Source Component", style="bold green", width=22)
+        flow_table.add_column("Flow Path", style="bold white", width=42)
+        flow_table.add_column("Target Component", style="bold magenta", width=22)
+        for flow in model.flows:
+            path_display = " ➔ ".join(flow.path)
+            flow_table.add_row(flow.source, path_display, flow.target)
+        console.print(flow_table)
+
+
+
 def interactive_menu(
     repo_path: Path,
     parsed_modules: dict[str, Module],
@@ -374,7 +458,7 @@ def interactive_menu(
                 "[bold cyan][4][/bold cyan] 💥 Trace Blast Radius\n"
                 "[bold cyan][5][/bold cyan] ⚠️  Detect Circular Imports   "
                 "[bold cyan][6][/bold cyan] 📊 Full Repository Dashboard\n"
-                "[bold cyan][7][/bold cyan] 🌐 Export Sourcetrail HTML    "
+                "[bold cyan][7][/bold cyan] 🌐 Export Living Atlas HTML    "
                 "[bold cyan][8][/bold cyan] 💾 Export JSON Report\n"
                 "[bold cyan][?] [/bold cyan] 🛠️  Show Commands Reference    "
                 "[bold red][q][/bold red] Exit",
@@ -435,7 +519,7 @@ def interactive_menu(
         elif choice == "6":
             display_dashboard(repo_path, parsed_modules, builder)
         elif choice == "7":
-            html_out = repo_path / "karuvi_graph.html"
+            html_out = repo_path / "karuvi_atlas.html"
             export_html_graph(builder, html_out)
         elif choice == "8":
             json_out = repo_path / "karuvi_analysis.json"
@@ -562,11 +646,12 @@ def export_full_json(
     console.print(f"[bold green]✔ Saved full repository JSON to:[/bold green] [cyan]{output_path}[/cyan]")
 
 
-def export_html_graph(builder: RepoGraphBuilder, output_path: Path):
-    """Export standalone interactive Sourcetrail-grade HTML dependency visualizer."""
-    html_content = builder.render_html()
+def export_html_graph(builder: RepoGraphBuilder, output_path: Path, arch_model: Any = None):
+    """Export standalone interactive Living Codebase Atlas HTML visualizer."""
+    from architecture.visualizer import generate_atlas_html
+    html_content = generate_atlas_html(builder, arch_model)
     output_path.write_text(html_content, encoding="utf-8")
-    console.print(f"[bold green]✔ Saved Sourcetrail-grade interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
+    console.print(f"[bold green]✔ Saved Living Codebase Atlas interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
 
 
 def main():
@@ -601,7 +686,7 @@ def main():
         "--html",
         type=str,
         default=None,
-        help="File path to save interactive Sourcetrail HTML visualizer",
+        help="File path to save interactive Living Codebase Atlas HTML visualizer",
     )
     parser.add_argument(
         "--tree",
@@ -651,6 +736,24 @@ def main():
         dest="graph",
         action="store_true",
         help="Display ASCII connectivity matrix / dependency summary",
+    )
+    parser.add_argument(
+        "--architecture",
+        "-a",
+        action="store_true",
+        help="Reconstruct and display high-level architectural components and flows",
+    )
+    parser.add_argument(
+        "--arch-json",
+        type=str,
+        default=None,
+        help="Path to export reconstructed architecture model JSON",
+    )
+    parser.add_argument(
+        "--arch-doc",
+        type=str,
+        default=None,
+        help="Path to export deterministic architecture Markdown documentation",
     )
     parser.add_argument(
         "--interactive",
@@ -789,11 +892,44 @@ def main():
         else:
             console.print(f"[bold red]Error:[/bold red] File {args.chart} not found in parsed modules.")
 
+    arch_model = None
+    # Reconstructed Architecture Mode
+    if args.architecture or args.arch_json or args.arch_doc:
+        from architecture.analyzer import ArchitectureAnalyzer
+        from architecture.documentation import generate_architecture_markdown
+        from architecture.serialization import export_architecture_json
+
+        arch_analyzer = ArchitectureAnalyzer(repo_path)
+        arch_model = arch_analyzer.analyze(builder)
+
+        if args.architecture:
+            render_architecture_dashboard(arch_model)
+
+        if args.arch_json:
+            export_architecture_json(arch_model, args.arch_json)
+            console.print(f"[bold green]✔[/bold green] Exported architecture model JSON to [cyan]{args.arch_json}[/cyan]")
+
+        if args.arch_doc:
+            doc_text = generate_architecture_markdown(arch_model)
+            out_doc = Path(args.arch_doc)
+            out_doc.parent.mkdir(parents=True, exist_ok=True)
+            out_doc.write_text(doc_text, encoding="utf-8")
+            console.print(f"[bold green]✔[/bold green] Exported architecture documentation to [cyan]{args.arch_doc}[/cyan]")
+
     if args.interactive:
         interactive_menu(repo_path, parsed_modules, global_index, builder)
         return
 
-    has_specific_flag = bool(args.tree or args.deps or args.inspect or args.blast or args.cycles or args.graph or args.chart)
+    has_specific_flag = bool(
+        args.tree
+        or args.deps
+        or args.inspect
+        or args.blast
+        or args.cycles
+        or args.graph
+        or args.chart
+        or args.architecture
+    )
 
     # If no specific inspection flag was provided, display dashboard
     if not has_specific_flag:
@@ -809,11 +945,11 @@ def main():
             choice = input("\nSave analysis outputs? ([j]son / [h]tml / [b]oth / [n]one) [b]: ").strip().lower()
             if choice in ("", "b", "both"):
                 json_path = repo_path / "karuvi_analysis.json"
-                html_path = repo_path / "karuvi_graph.html"
+                html_path = repo_path / "karuvi_atlas.html"
             elif choice in ("j", "json"):
                 json_path = repo_path / "karuvi_analysis.json"
             elif choice in ("h", "html"):
-                html_path = repo_path / "karuvi_graph.html"
+                html_path = repo_path / "karuvi_atlas.html"
         except (KeyboardInterrupt, EOFError):
             pass
 
@@ -821,7 +957,7 @@ def main():
         export_full_json(repo_path, parsed_modules, builder, json_path)
 
     if html_path:
-        export_html_graph(builder, html_path)
+        export_html_graph(builder, html_path, arch_model=arch_model)
 
     if args.mermaid:
         console.print("\n[bold]Mermaid Graph:[/bold]\n")
