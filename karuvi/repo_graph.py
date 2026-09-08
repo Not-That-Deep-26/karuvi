@@ -15,9 +15,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from pointers import GlobalIndex
-from returns import Module, module_to_dict
-from deps import iter_references
+from .pointers import GlobalIndex
+from .returns import Module, module_to_dict
+from .deps import iter_references
 
 
 @dataclass
@@ -340,7 +340,7 @@ class RepoGraphBuilder:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert repository graph and metrics into a JSON-serializable dictionary."""
-        from returns import deptree_to_dict, scope_to_dict
+        from .returns import deptree_to_dict, scope_to_dict
 
         internal_nodes = []
         for n in self.nodes.values():
@@ -419,7 +419,7 @@ class RepoGraphBuilder:
     def render_html(self, arch_model: Any = None) -> str:
         """Generate the Karuvi Living Codebase Atlas interactive HTML visualization."""
         try:
-            from architecture.visualizer import generate_atlas_html
+            from .architecture.visualizer import generate_atlas_html
             return generate_atlas_html(self, arch_model)
         except Exception:
             # Fallback to standard graph visualizer if architecture generation encounters an issue

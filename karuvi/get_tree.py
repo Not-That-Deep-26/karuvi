@@ -12,8 +12,8 @@ from rich.text import Text
 from rich.tree import Tree
 from tree_sitter import Language, Parser
 
-from pointers import DEFAULT_INDEX, GlobalIndex, Symbol, SymbolType
-from returns import Class, DepTree, Function, Module, Variable
+from .pointers import DEFAULT_INDEX, GlobalIndex, Symbol, SymbolType
+from .returns import Class, DepTree, Function, Module, Variable
 
 BUILTINS = set(dir(builtins))
 

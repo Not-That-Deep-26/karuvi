@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from architecture.models import ArchitectureModel
+from .models import ArchitectureModel
 
 
 def generate_architecture_markdown(model: ArchitectureModel) -> str:

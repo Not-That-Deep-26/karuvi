@@ -14,8 +14,8 @@ import json
 from pathlib import Path
 import pytest
 
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.serialization import serialize_architecture_model
+from karuvi.architecture.analyzer import ArchitectureAnalyzer
+from karuvi.architecture.serialization import serialize_architecture_model
 
 
 @pytest.fixture

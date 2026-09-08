@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from architecture.models import ArchitectureModel
+from .models import ArchitectureModel
 
 
 def serialize_architecture_model(model: ArchitectureModel) -> dict[str, Any]:

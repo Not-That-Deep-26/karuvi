@@ -11,7 +11,7 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.models import Component
+from .models import Component
 
 
 def build_component_graph(

@@ -101,23 +101,28 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "networkx" },
-    { name = "pytest" },
     { name = "rich" },
     { name = "tree-sitter" },
     { name = "tree-sitter-python" },
     { name = "uvicorn" },
 ]
 
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141.1" },
     { name = "networkx", specifier = ">=3.0" },
-    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "tree-sitter", specifier = ">=0.26.0" },
     { name = "tree-sitter-python", specifier = ">=0.25.0" },
     { name = "uvicorn", specifier = ">=0.52.4" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "markdown-it-py"

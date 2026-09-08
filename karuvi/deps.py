@@ -6,7 +6,7 @@ from typing import Iterable
 from rich.console import Console
 from rich.table import Table
 
-from returns import DepTree, Module, Variable
+from .returns import DepTree, Module, Variable
 
 
 @dataclass
@@ -105,7 +105,7 @@ def iter_references(
 
 
 def _parse_quietly(file_path: str) -> Module:
-    from get_tree import parse_file
+    from .get_tree import parse_file
 
     return parse_file(file_path, verbose=False)
 

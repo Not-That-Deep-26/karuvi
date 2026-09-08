@@ -14,7 +14,7 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.models import ArchitectureConfig, Component
+from .models import ArchitectureConfig, Component
 
 
 def calculate_structural_cohesion(modules: list[str], module_to_boundary: dict[str, str]) -> float:

@@ -23,7 +23,7 @@ FIXTURE_PATH = str(Path(__file__).parent.parent / "fixtures" / "simple_layered")
 def test_cli_onboard_command():
     """Verify `karuvi onboard <repo> --level beginner` runs cleanly."""
     result = subprocess.run(
-        [sys.executable, "cli.py", "onboard", FIXTURE_PATH, "--level", "beginner"],
+        [sys.executable, "-m", "karuvi", "onboard", FIXTURE_PATH, "--level", "beginner"],
         capture_output=True,
         text=True,
         check=False,
@@ -46,7 +46,7 @@ def test_cli_explore_export(tmp_path: Path):
     """Verify `karuvi explore <repo> --html <path>` exports Living Codebase Atlas."""
     out_html = tmp_path / "test_atlas.html"
     result = subprocess.run(
-        [sys.executable, "cli.py", FIXTURE_PATH, "--html", str(out_html), "--architecture"],
+        [sys.executable, "-m", "karuvi", FIXTURE_PATH, "--html", str(out_html), "--architecture"],
         capture_output=True,
         text=True,
         check=False,
@@ -62,7 +62,7 @@ def test_cli_plain_html_export_without_architecture(tmp_path: Path):
     """`--html` without `--architecture` must still build the arch model lazily."""
     out_html = tmp_path / "plain_atlas.html"
     result = subprocess.run(
-        [sys.executable, "cli.py", FIXTURE_PATH, "--html", str(out_html)],
+        [sys.executable, "-m", "karuvi", FIXTURE_PATH, "--html", str(out_html)],
         capture_output=True,
         text=True,
         check=False,
@@ -80,7 +80,7 @@ def test_cli_export_subcommand(tmp_path: Path):
     shutil.copytree(src, dst)
 
     result = subprocess.run(
-        [sys.executable, "cli.py", "export", str(dst)],
+        [sys.executable, "-m", "karuvi", "export", str(dst)],
         capture_output=True,
         text=True,
         check=False,
@@ -97,7 +97,7 @@ def test_cli_export_subcommand(tmp_path: Path):
 
 def test_export_outputs_both(tmp_path: Path):
     """export_outputs() writes valid JSON and a payload-bearing HTML in one call."""
-    from cli import analyze_repository, export_outputs
+    from karuvi.cli import analyze_repository, export_outputs
 
     repo = Path(FIXTURE_PATH).resolve()
     parsed_modules, _index, builder = analyze_repository(repo)
@@ -128,7 +128,7 @@ def test_bare_run_autoserves_atlas(tmp_path: Path):
     probe.close()
 
     proc = subprocess.Popen(
-        [sys.executable, "cli.py", str(dst), "--port", str(port)],
+        [sys.executable, "-m", "karuvi", str(dst), "--port", str(port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -166,7 +166,7 @@ def test_bare_run_autoserves_atlas(tmp_path: Path):
 def test_cli_explore_runs_classic_dashboard():
     """`karuvi explore <repo>` now runs the former default dashboard (no auto-serve)."""
     result = subprocess.run(
-        [sys.executable, "cli.py", "explore", FIXTURE_PATH],
+        [sys.executable, "-m", "karuvi", "explore", FIXTURE_PATH],
         capture_output=True,
         text=True,
         check=False,
@@ -178,7 +178,7 @@ def test_cli_explore_runs_classic_dashboard():
 
 def test_atlas_server_serves_html(tmp_path: Path):
     """The atlas HTTP server returns the exported HTML file over localhost."""
-    from cli import _atlas_server
+    from karuvi.cli import _atlas_server
 
     html_file = tmp_path / "atlas.html"
     expected = "<html><body>window.KARUVI_DATA = {}</body></html>"

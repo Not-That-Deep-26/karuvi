@@ -3,11 +3,11 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from architecture.boundaries import (
+from karuvi.architecture.boundaries import (
     detect_boundaries,
     extract_module_boundary,
 )
-from architecture.models import ArchitectureConfig
+from karuvi.architecture.models import ArchitectureConfig
 
 
 def test_extract_module_boundary():

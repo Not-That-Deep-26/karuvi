@@ -14,21 +14,21 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.boundaries import detect_boundaries
-from architecture.communities import detect_communities
-from architecture.component_graph import build_component_graph
-from architecture.components import reconstruct_components
-from architecture.entrypoints import detect_entry_points
-from architecture.flows import detect_flows
-from architecture.metrics import calculate_metrics
-from architecture.models import (
+from .boundaries import detect_boundaries
+from .communities import detect_communities
+from .component_graph import build_component_graph
+from .components import reconstruct_components
+from .entrypoints import detect_entry_points
+from .flows import detect_flows
+from .metrics import calculate_metrics
+from .models import (
     ArchitectureConfig,
     ArchitectureModel,
     Component,
     Module,
 )
-from architecture.module_graph import build_module_graph, normalize_module_path
-from architecture.roles import detect_roles
+from .module_graph import build_module_graph, normalize_module_path
+from .roles import detect_roles
 
 logger = logging.getLogger("karuvi.architecture")
 
@@ -60,7 +60,7 @@ class ArchitectureAnalyzer:
 
         # 1. Obtain input if not provided
         if symbol_graph_or_builder is None:
-            from cli import analyze_repository
+            from ..cli import analyze_repository
             _, _, repo_builder = analyze_repository(repo_root, verbose=False)
             symbol_graph_or_builder = repo_builder
 

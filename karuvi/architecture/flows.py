@@ -11,7 +11,7 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.models import ArchitectureFlow, Component
+from .models import ArchitectureFlow, Component
 
 
 def detect_flows(

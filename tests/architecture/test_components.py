@@ -2,11 +2,11 @@
 import networkx as nx
 import pytest
 
-from architecture.components import (
+from karuvi.architecture.components import (
     derive_component_name,
     reconstruct_components,
 )
-from architecture.models import ArchitectureConfig
+from karuvi.architecture.models import ArchitectureConfig
 
 
 def test_boundary_and_community_agreement():

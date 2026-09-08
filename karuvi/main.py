@@ -11,7 +11,7 @@ resolved automatically — the end-user never has to worry about parse order.
 
 Quick start
 -----------
-    uvicorn main:app --reload
+    uvicorn karuvi.main:app --reload
     POST /init  {"project_root": "/path/to/project"}
     GET  /dependencies?file=package/foo.py&start=10&end=15
 
@@ -49,18 +49,20 @@ GET  /variables  — look up a variable by name (searches all modules)
 """
 from __future__ import annotations
 
+import argparse
 import os
 from pathlib import Path
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-import deps
-import get_tree
-from pointers import GlobalIndex
-from repo_graph import RepoGraphBuilder
-from returns import (
+from . import deps
+from . import get_tree
+from .pointers import GlobalIndex
+from .repo_graph import RepoGraphBuilder
+from .returns import (
     Module,
     class_to_dict,
     deptree_to_dict,
@@ -559,7 +561,7 @@ def get_repo_graph():
 def get_architecture():
     _require_project()
     builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
-    from architecture.analyzer import ArchitectureAnalyzer
+    from .architecture.analyzer import ArchitectureAnalyzer
     arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
     return arch_model.to_dict()
 
@@ -572,8 +574,8 @@ def get_architecture():
 def get_architecture_doc():
     _require_project()
     builder = RepoGraphBuilder(PROJECT_ROOT, PARSED, GLOBAL_INDEX).build()
-    from architecture.analyzer import ArchitectureAnalyzer
-    from architecture.documentation import generate_architecture_markdown
+    from .architecture.analyzer import ArchitectureAnalyzer
+    from .architecture.documentation import generate_architecture_markdown
     arch_model = ArchitectureAnalyzer(PROJECT_ROOT).analyze(builder)
     return {"documentation": generate_architecture_markdown(arch_model)}
 
@@ -608,10 +610,20 @@ def on_startup():
             init_project(InitRequest(project_root=str(p), parse_all=True))
 
 
-if __name__ == "__main__":
-    import argparse
-    import uvicorn
+def serve(
+    repo: str | None = None,
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    reload: bool = False,
+):
+    """Run the Karuvi FastAPI daemon. ``repo`` auto-initializes on startup."""
+    if repo:
+        os.environ["KARUVI_REPO"] = str(Path(repo).resolve())
+    uvicorn.run("karuvi.main:app", host=host, port=port, reload=reload)
 
+
+def main(args: list[str] | None = None) -> None:
+    """Console entry point for the Karuvi daemon (``karuvi-serve``)."""
     parser = argparse.ArgumentParser(description="Karuvi Stateful Daemon")
     parser.add_argument(
         "--repo",
@@ -623,9 +635,14 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind")
     parser.add_argument("--port", "-p", type=int, default=8000, help="Port to bind")
     parser.add_argument("--reload", action="store_true", help="Enable reload")
-    args = parser.parse_args()
+    parsed = parser.parse_args(args)
+    serve(
+        repo=parsed.repo,
+        host=parsed.host,
+        port=parsed.port,
+        reload=parsed.reload,
+    )
 
-    if args.repo:
-        os.environ["KARUVI_REPO"] = str(Path(args.repo).resolve())
 
-    uvicorn.run("main:app", host=args.host, port=args.port, reload=args.reload)
+if __name__ == "__main__":
+    main()

@@ -2,10 +2,10 @@
 import networkx as nx
 import pytest
 
-from architecture.entrypoints import detect_entry_points
-from architecture.flows import detect_flows
-from architecture.metrics import calculate_metrics
-from architecture.models import Component
+from karuvi.architecture.entrypoints import detect_entry_points
+from karuvi.architecture.flows import detect_flows
+from karuvi.architecture.metrics import calculate_metrics
+from karuvi.architecture.models import Component
 
 
 def test_detect_entry_points():

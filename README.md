@@ -99,14 +99,18 @@ uv pip install -e .
 Point Karuvi at any target Python repository to generate an interactive Living Codebase Atlas:
 
 ```bash
-# Scan a repository and launch directly in your default browser
-uv run karuvi /path/to/target-repo explore
+# Install Karuvi as a package (editable dev install)
+uv pip install -e .
+
+# Bare run: analyze, export the Atlas, auto-serve it over local HTTP, and open it
+# in your default browser (Ctrl+C stops the server)
+uv run karuvi /path/to/target-repo
 ```
 
-Or run an on-demand terminal scan:
+Or run the classic terminal dashboard (former default) with opt-in exports:
 
 ```bash
-uv run karuvi /path/to/target-repo
+uv run karuvi /path/to/target-repo explore
 ```
 
 When prompted:
@@ -168,9 +172,9 @@ uv run karuvi --commands
 
 | Command / Flag | Alias | Description | Example Usage |
 |---|---|---|---|
-| `karuvi <repo>` | — | Scan repository, build graph, and display summary dashboard | `uv run karuvi /path/to/repo` |
+| `karuvi <repo>` | — | Export the Atlas and auto-serve it over local HTTP in your browser | `uv run karuvi /path/to/repo` |
 | `onboard` | `--onboard` | Generate progressive reading roadmap with complexity tiers | `uv run karuvi <repo> onboard --level beginner` |
-| `explore` | `--explore` | Generate and open Living Codebase Atlas in default browser | `uv run karuvi <repo> explore` |
+| `explore` | `--explore` | Classic terminal dashboard with opt-in JSON/HTML exports | `uv run karuvi <repo> explore` |
 | `--tree <file>` | `-t`, `--file-tree` | Print aesthetic ASCII intra-file AST & code flow tree | `uv run karuvi <repo> -t src/app.py` |
 | `--deps <file>` | — | Print upstream imports & downstream dependents tree | `uv run karuvi <repo> --deps src/app.py` |
 | `--chart <file>` | `--file-chart` | Print indentation-based control flow chart for a file | `uv run karuvi <repo> --chart src/app.py` |
@@ -397,11 +401,11 @@ Karuvi can be imported as a library in your Python scripts, CI automation pipeli
 
 ```python
 from pathlib import Path
-import get_tree
-from repo_graph import RepoGraphBuilder
-from pointers import GlobalIndex
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.visualizer import generate_atlas_html, build_unified_payload
+from karuvi import get_tree
+from karuvi.repo_graph import RepoGraphBuilder
+from karuvi.pointers import GlobalIndex
+from karuvi.architecture.analyzer import ArchitectureAnalyzer
+from karuvi.architecture.visualizer import generate_atlas_html, build_unified_payload
 
 repo_path = Path("/path/to/my-repo")
 
@@ -440,6 +444,8 @@ print("✔ Living Codebase Atlas exported successfully!")
 
 ```
 karuvi/
+├── __init__.py                       # Package metadata (import karuvi)
+├── __main__.py                       # python -m karuvi entry point
 ├── architecture/                     # Stage 2: Architectural Reconstruction
 │   ├── analyzer.py                   # Master orchestrator combining all stages
 │   ├── boundaries.py                 # Architectural boundary enforcement & validation
@@ -461,7 +467,7 @@ karuvi/
 ├── pointers.py                       # Global symbol cross-referencing & indexing
 ├── repo_graph.py                     # Stage 1 Whole-repository multigraph builder
 ├── returns.py                        # AST deptree dictionary serializer
-├── main.py                           # FastAPI daemon & HTTP REST service
+├── main.py                           # FastAPI daemon & HTTP REST service (karuvi-serve)
 └── tests/                            # Comprehensive unit & integration test suite
 ```
 

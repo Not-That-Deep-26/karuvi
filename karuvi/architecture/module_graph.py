@@ -14,7 +14,7 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.exceptions import GraphValidationError
+from .exceptions import GraphValidationError
 
 
 def normalize_module_path(file_path: str | Path, repository_root: Path | str) -> str:

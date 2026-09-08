@@ -2,8 +2,8 @@
 import networkx as nx
 import pytest
 
-from architecture.component_graph import build_component_graph
-from architecture.models import Component
+from karuvi.architecture.component_graph import build_component_graph
+from karuvi.architecture.models import Component
 
 
 def test_build_component_graph():

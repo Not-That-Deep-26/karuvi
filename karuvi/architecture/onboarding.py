@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 import networkx as nx
 
-from architecture.models import ArchitectureModel, Component, Module
+from .models import ArchitectureModel, Component, Module
 
 
 @dataclass

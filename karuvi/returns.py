@@ -182,7 +182,7 @@ _ACTIVE_MODULE: Module | None = None
 def start_file(filename: str) -> Module:
     """Parse a file and initialize its dependency tree and symbol tracking."""
     global _ACTIVE_MODULE
-    from get_tree import parse_file
+    from .get_tree import parse_file
     _ACTIVE_MODULE = parse_file(filename)
     return _ACTIVE_MODULE
 

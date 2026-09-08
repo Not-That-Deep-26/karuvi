@@ -2,7 +2,7 @@
 import networkx as nx
 import pytest
 
-from architecture.communities import (
+from karuvi.architecture.communities import (
     convert_to_undirected_weighted,
     detect_communities,
 )

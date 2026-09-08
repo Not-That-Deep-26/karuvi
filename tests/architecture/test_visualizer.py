@@ -11,9 +11,9 @@ import json
 from pathlib import Path
 import pytest
 
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.visualizer import build_unified_payload, generate_atlas_html
-from cli import analyze_repository
+from karuvi.architecture.analyzer import ArchitectureAnalyzer
+from karuvi.architecture.visualizer import build_unified_payload, generate_atlas_html
+from karuvi.cli import analyze_repository
 
 
 @pytest.fixture

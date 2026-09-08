@@ -1,6 +1,6 @@
 """Tests for architecture data models."""
 import pytest
-from architecture.models import (
+from karuvi.architecture.models import (
     Module,
     Component,
     ArchitectureRelationship,
@@ -8,7 +8,7 @@ from architecture.models import (
     ArchitectureConfig,
     ArchitectureModel,
 )
-from architecture.exceptions import (
+from karuvi.architecture.exceptions import (
     ArchitectureError,
     GraphValidationError,
     ComponentResolutionError,

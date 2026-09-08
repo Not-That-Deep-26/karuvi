@@ -1,25 +1,30 @@
 [project]
 name = "karuvi"
 version = "0.1.0"
-description = "Add your description here"
+description = "Whole-Repository Python Dependency Analyzer, Symbol Tracer & Living Codebase Atlas"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.141.1",
     "networkx>=3.0",
-    "pytest>=8.0.0",
     "rich>=15.0.0",
     "tree-sitter>=0.26.0",
     "tree-sitter-python>=0.25.0",
     "uvicorn>=0.52.4",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
 [project.scripts]
-karuvi = "cli:main"
+karuvi = "karuvi.cli:main"
+karuvi-serve = "karuvi.main:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["cli", "deps", "get_tree", "main", "pointers", "repo_graph", "returns"]
-packages = ["architecture"]
+packages = ["karuvi", "karuvi.architecture"]

@@ -2,8 +2,8 @@
 import networkx as nx
 import pytest
 
-from architecture.metrics import calculate_metrics
-from architecture.roles import detect_roles
+from karuvi.architecture.metrics import calculate_metrics
+from karuvi.architecture.roles import detect_roles
 
 
 def test_metrics_and_roles_layered():

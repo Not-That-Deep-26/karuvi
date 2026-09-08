@@ -3,7 +3,7 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from architecture.module_graph import (
+from karuvi.architecture.module_graph import (
     build_module_graph,
     normalize_module_path,
 )

@@ -13,8 +13,8 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.models import ArchitectureConfig
-from architecture.module_graph import normalize_module_path
+from .models import ArchitectureConfig
+from .module_graph import normalize_module_path
 
 
 def extract_module_boundary(

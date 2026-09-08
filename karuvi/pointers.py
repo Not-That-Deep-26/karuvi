@@ -110,7 +110,7 @@ class GlobalIndex:
                     return None
                 self._in_progress.add(str_path)
                 try:
-                    from get_tree import parse_file
+                    from .get_tree import parse_file
                     mod = parse_file(str_path, global_index=self, verbose=False)
                     self.modules[from_module] = mod
                 finally:

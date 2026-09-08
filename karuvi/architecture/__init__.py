@@ -6,15 +6,15 @@ Deterministic architecture reconstruction layer for Python codebases.
 """
 from __future__ import annotations
 
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.documentation import generate_architecture_markdown
-from architecture.exceptions import (
+from .analyzer import ArchitectureAnalyzer
+from .documentation import generate_architecture_markdown
+from .exceptions import (
     ArchitectureError,
     ComponentResolutionError,
     GraphValidationError,
     MissingDependencyError,
 )
-from architecture.models import (
+from .models import (
     ArchitectureConfig,
     ArchitectureFlow,
     ArchitectureModel,
@@ -22,11 +22,11 @@ from architecture.models import (
     Component,
     Module,
 )
-from architecture.serialization import (
+from .serialization import (
     export_architecture_json,
     serialize_architecture_model,
 )
-from architecture.visualizer import (
+from .visualizer import (
     build_unified_payload,
     generate_atlas_html,
 )

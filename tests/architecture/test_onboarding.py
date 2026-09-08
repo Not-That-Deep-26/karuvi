@@ -5,8 +5,8 @@ Unit and Integration Tests for Codebase Onboarding Engine
 from pathlib import Path
 import pytest
 
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.onboarding import CodebaseOnboardingEngine, OnboardingPlan, OnboardingStep
+from karuvi.architecture.analyzer import ArchitectureAnalyzer
+from karuvi.architecture.onboarding import CodebaseOnboardingEngine, OnboardingPlan, OnboardingStep
 
 
 @pytest.fixture
@@ -77,7 +77,7 @@ def test_onboarding_cycle_handling(fixtures_dir):
 
 
 def test_onboarding_empty_model():
-    from architecture.models import ArchitectureModel
+    from karuvi.architecture.models import ArchitectureModel
     empty_model = ArchitectureModel(
         repository_root="/tmp/empty",
         modules={},

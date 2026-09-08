@@ -4,14 +4,14 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from architecture.documentation import generate_architecture_markdown
-from architecture.models import (
+from karuvi.architecture.documentation import generate_architecture_markdown
+from karuvi.architecture.models import (
     ArchitectureFlow,
     ArchitectureModel,
     Component,
     Module,
 )
-from architecture.serialization import (
+from karuvi.architecture.serialization import (
     export_architecture_json,
     serialize_architecture_model,
 )

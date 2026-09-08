@@ -12,7 +12,7 @@ from typing import Any
 
 import networkx as nx
 
-from architecture.models import ArchitectureConfig
+from .models import ArchitectureConfig
 
 logger = logging.getLogger(__name__)
 

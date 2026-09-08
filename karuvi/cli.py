@@ -28,10 +28,10 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
-import get_tree
-from pointers import GlobalIndex
-from repo_graph import RepoGraphBuilder
-from returns import Module, module_to_dict
+from . import get_tree
+from .pointers import GlobalIndex
+from .repo_graph import RepoGraphBuilder
+from .returns import Module, module_to_dict
 
 console = Console()
 
@@ -531,8 +531,8 @@ def interactive_menu(
             json_out = repo_path / "karuvi_analysis.json"
             export_full_json(repo_path, parsed_modules, builder, json_out)
         elif choice == "9":
-            from architecture.analyzer import ArchitectureAnalyzer
-            from architecture.onboarding import CodebaseOnboardingEngine
+            from .architecture.analyzer import ArchitectureAnalyzer
+            from .architecture.onboarding import CodebaseOnboardingEngine
             arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
             plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
             render_onboarding_course(plan, level="beginner")
@@ -660,7 +660,7 @@ def export_full_json(
 
 def export_html_graph(builder: RepoGraphBuilder, output_path: Path, arch_model: Any = None):
     """Export standalone interactive Living Codebase Atlas HTML visualizer."""
-    from architecture.visualizer import generate_atlas_html
+    from .architecture.visualizer import generate_atlas_html
     html_content = generate_atlas_html(builder, arch_model)
     output_path.write_text(html_content, encoding="utf-8")
     console.print(f"[bold green]✔ Saved Living Codebase Atlas interactive HTML visualizer to:[/bold green] [cyan]{output_path}[/cyan]")
@@ -676,7 +676,7 @@ def export_outputs(
 ) -> dict[str, Path]:
     """Consolidated export for the repository-wide JSON report and HTML atlas."""
     if html_path is not None and arch_model is None:
-        from architecture.analyzer import ArchitectureAnalyzer
+        from .architecture.analyzer import ArchitectureAnalyzer
 
         arch_model = ArchitectureAnalyzer(repo_path).analyze(builder)
 
@@ -1075,7 +1075,7 @@ def main():
         or args.onboard
     )
     if needs_arch_model:
-        from architecture.analyzer import ArchitectureAnalyzer
+        from .architecture.analyzer import ArchitectureAnalyzer
 
         arch_analyzer = ArchitectureAnalyzer(repo_path)
         arch_model = arch_analyzer.analyze(builder)
@@ -1084,12 +1084,12 @@ def main():
             render_architecture_dashboard(arch_model)
 
         if args.arch_json:
-            from architecture.serialization import export_architecture_json
+            from .architecture.serialization import export_architecture_json
             export_architecture_json(arch_model, args.arch_json)
             console.print(f"[bold green]✔[/bold green] Exported architecture model JSON to [cyan]{args.arch_json}[/cyan]")
 
         if args.arch_doc:
-            from architecture.documentation import generate_architecture_markdown
+            from .architecture.documentation import generate_architecture_markdown
             doc_text = generate_architecture_markdown(arch_model)
             out_doc = Path(args.arch_doc)
             out_doc.parent.mkdir(parents=True, exist_ok=True)
@@ -1097,7 +1097,7 @@ def main():
             console.print(f"[bold green]✔[/bold green] Exported architecture documentation to [cyan]{args.arch_doc}[/cyan]")
 
         if args.onboard:
-            from architecture.onboarding import CodebaseOnboardingEngine
+            from .architecture.onboarding import CodebaseOnboardingEngine
             plan = CodebaseOnboardingEngine(arch_model, builder).build_plan()
             render_onboarding_course(plan, level=args.level)
 
@@ -1177,12 +1177,12 @@ def main():
     if args.serve:
         console.print("\n[bold cyan]Starting Karuvi Daemon...[/bold cyan]")
         import uvicorn
-        from main import app, init_project, InitRequest
+        from .main import app, init_project, InitRequest
         init_project(InitRequest(project_root=str(repo_path), parse_all=False))
-        import main
-        main.PARSED = parsed_modules
-        main.PROJECT_ROOT = repo_path
-        main.GLOBAL_INDEX = global_index
+        from . import main as daemon_mod
+        daemon_mod.PARSED = parsed_modules
+        daemon_mod.PROJECT_ROOT = repo_path
+        daemon_mod.GLOBAL_INDEX = global_index
         uvicorn.run(app, host="127.0.0.1", port=8000)
 
 

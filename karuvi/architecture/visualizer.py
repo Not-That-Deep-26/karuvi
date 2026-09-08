@@ -16,10 +16,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from architecture.analyzer import ArchitectureAnalyzer
-from architecture.documentation import generate_architecture_markdown
-from architecture.models import ArchitectureModel
-from architecture.module_graph import normalize_module_path
+from .analyzer import ArchitectureAnalyzer
+from .documentation import generate_architecture_markdown
+from .models import ArchitectureModel
+from .module_graph import normalize_module_path
 
 
 def build_unified_payload(
@@ -71,7 +71,7 @@ def build_unified_payload(
         classes_data = []
         if repo_builder and hasattr(repo_builder, "parsed") and mod_id in repo_builder.parsed:
             m_parsed = repo_builder.parsed[mod_id]
-            from returns import deptree_to_dict
+            from ..returns import deptree_to_dict
             code_flow = deptree_to_dict(m_parsed.code_flow)
             for f in m_parsed.functions:
                 functions_data.append({
