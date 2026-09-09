@@ -31,34 +31,21 @@ This will analyze the repository, generate an interactive HTML report (`karuvi_a
 
 ## Installation
 
-### Linux
-Karuvi is a standard Python package. We recommend installing it using `pipx` to keep its dependencies isolated:
+### Linux / macOS
+The easiest and fastest way to install Karuvi natively is using [uv](https://github.com/astral-sh/uv):
 
 ```bash
-pipx install git+https://github.com/Not-That-Deep-26/karuvi.git
+uv tool install karuvi
 ```
-
-Alternatively, you can install it via standard `pip`:
-```bash
-pip install git+https://github.com/Not-That-Deep-26/karuvi.git
-```
-
-*(Note: We plan to publish official packages for PyPI and the AUR soon.)*
+*Alternatively, you can just run it temporarily without installing: `uvx karuvi /path/to/repo`*
 
 ### Windows
-Native Windows execution of complex Python AST parsers can occasionally encounter compatibility issues. To provide a seamless experience, Karuvi provides a PowerShell launcher backed by Docker.
+Karuvi is available via the Windows Package Manager (WinGet). To install the seamless Docker-backed launcher, run:
 
-1. Ensure **Docker Desktop** is installed and running.
-2. Download the [karuvi.ps1](https://github.com/Not-That-Deep-26/karuvi/releases/latest/download/karuvi.ps1) launcher.
-3. Place `karuvi.ps1` in a directory on your PATH (e.g., `C:\Windows\System32` or a custom scripts folder).
-
-You can then run Karuvi directly from PowerShell:
 ```powershell
-karuvi C:\Projects\my-python-project
+winget install not-that-deep-26.karuvi
 ```
-The launcher will transparently mount your repository into a container and execute the analysis.
-
-*(Note: We plan to publish official manifests for WinGet and Scoop soon.)*
+*Note: Make sure Docker Desktop is installed and running before using the CLI.*
 
 ### Docker (Platform Independent)
 You can manually run the Karuvi Docker image against any mounted repository:
