@@ -1,0 +1,8 @@
+services:
+  karuvi:
+    image: ghcr.io/not-that-deep-26/karuvi:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${KARUVI_REPO_PATH:-.}:/workspace:ro
+    command: ["/workspace", "--serve"]
