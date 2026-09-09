@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write # Required for PyPI Trusted Publishing
 
 env:
   REGISTRY: ghcr.io
@@ -16,10 +17,14 @@ env:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-
+    
+    # We want to wait for this job to finish before publishing to external package managers
+    # to ensure the GitHub release artifacts are ready.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -60,9 +65,35 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/*
             karuvi.ps1
           generate_release_notes: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # This action requires the repository to be added as a Trusted Publisher on PyPI
+          skip-existing: true
+
+      - name: Submit WinGet Package
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: not-that-deep-26.karuvi
+          version: ${{ github.ref_name }} # e.g. v0.1.0 -> 0.1.0 (Wait, it might need string replacement, but the action often handles 'v')
+          installers-regex: '\.ps1$' # Target the ps1 script, or we can just let it update the yaml manifest directly if we use the default
+          token: ${{ secrets.WINGET_TOKEN }}
+          
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: karuvi
+          pkgbuild: ./packaging/aur/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to version ${{ github.ref_name }}"
+          force_push: true
