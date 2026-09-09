@@ -79,11 +79,3 @@ jobs:
           # This action requires the repository to be added as a Trusted Publisher on PyPI
           skip-existing: true
 
-      - name: Submit WinGet Package
-        uses: vedantmgoyal2009/winget-releaser@v2
-        with:
-          identifier: not-that-deep-26.karuvi
-          version: ${{ github.ref_name }} # e.g. v0.1.0 -> 0.1.0 (Wait, it might need string replacement, but the action often handles 'v')
-          installers-regex: '\.ps1$' # Target the ps1 script, or we can just let it update the yaml manifest directly if we use the default
-          token: ${{ secrets.WINGET_TOKEN }}
-          
