@@ -1,0 +1,22 @@
+# Maintainer: Auto-generated
+pkgname=karuvi
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Whole-Repository Python Dependency Analyzer, Symbol Tracer & Living Codebase Atlas"
+arch=('any')
+url="https://github.com/Not-That-Deep-26/karuvi"
+license=('MIT')
+depends=('python')
+makedepends=('python-build' 'python-installer' 'python-wheel' 'python-setuptools')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Not-That-Deep-26/karuvi/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+}

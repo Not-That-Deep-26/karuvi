@@ -1,0 +1,20 @@
+PackageIdentifier: not-that-deep-26.karuvi
+PackageVersion: 0.1.0
+PackageName: karuvi
+Publisher: not-that-deep-26
+License: MIT
+ShortDescription: Whole-Repository Python Dependency Analyzer, Symbol Tracer & Living Codebase Atlas
+Moniker: karuvi
+Tags:
+  - python
+  - analysis
+  - architecture
+Installers:
+  - Architecture: x64
+    InstallerType: portable
+    InstallerUrl: https://github.com/Not-That-Deep-26/karuvi/releases/download/v0.1.0/karuvi.ps1
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+    Commands:
+      - karuvi
+ManifestType: singleton
+ManifestVersion: 1.6.0

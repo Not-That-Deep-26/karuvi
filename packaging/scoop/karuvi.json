@@ -1,0 +1,13 @@
+{
+    "version": "0.1.0",
+    "description": "Whole-Repository Python Dependency Analyzer, Symbol Tracer & Living Codebase Atlas",
+    "homepage": "https://github.com/Not-That-Deep-26/karuvi",
+    "license": "MIT",
+    "url": "https://github.com/Not-That-Deep-26/karuvi/releases/download/v0.1.0/karuvi.ps1",
+    "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "bin": "karuvi.ps1",
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/Not-That-Deep-26/karuvi/releases/download/v$version/karuvi.ps1"
+    }
+}

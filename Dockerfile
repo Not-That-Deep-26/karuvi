@@ -7,16 +7,12 @@ ENV PYTHONUNBUFFERED=1
 
 RUN pip install --no-cache-dir uv
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
+COPY karuvi/ ./karuvi/
 
-RUN uv sync --frozen --no-install-project
-
-COPY . .
-
-RUN uv sync --frozen
+RUN uv pip install --system --no-cache .
 
 EXPOSE 8000
 
-ENTRYPOINT ["uv", "run", "karuvi"]
-
+ENTRYPOINT ["karuvi"]
 CMD ["--help"]
