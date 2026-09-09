@@ -19,67 +19,60 @@ Navigating large, unfamiliar, or poorly documented Python codebases is challengi
 ## Architecture Overview
 Karuvi utilizes `tree-sitter-python` to perform fast, robust AST parsing. It constructs a `GlobalIndex` to resolve imports and symbol usages across file boundaries, ultimately building a `RepoGraphBuilder` model. This model is then queried via the CLI or served over an embedded `FastAPI` daemon for interactive exploration.
 
-## Quick Start
-
-The quickest way to use Karuvi is to run it against a local repository:
-
-```bash
-karuvi /path/to/your/python-project
-```
-
-This will analyze the repository, generate an interactive HTML report (`karuvi_atlas.html`), and automatically open it in your browser.
-
 ## Installation
 
-### Linux / macOS
-The easiest and fastest way to install Karuvi natively is using [uv](https://github.com/astral-sh/uv):
+### Linux & macOS
+The recommended way to install Karuvi natively is using [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv tool install karuvi
 ```
-*Alternatively, you can just run it temporarily without installing: `uvx karuvi /path/to/repo`*
+
+*Arch Linux users can install via the AUR: `yay -S karuvi`*
 
 ### Windows
-Karuvi is available via the Windows Package Manager (WinGet). To install the seamless Docker-backed launcher, run:
+Karuvi provides a seamless Docker-backed launcher for Windows. You can install it using WinGet or Scoop:
 
 ```powershell
+# Using WinGet
 winget install not-that-deep-26.karuvi
-```
-*Note: Make sure Docker Desktop is installed and running before using the CLI.*
 
-### Docker (Platform Independent)
-You can manually run the Karuvi Docker image against any mounted repository:
+# Or using Scoop
+scoop install https://raw.githubusercontent.com/Not-That-Deep-26/karuvi/main/packaging/scoop/karuvi.json
+```
+*Note: Ensure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is installed and running.* 
+
+### Docker (Any Platform)
+Run Karuvi without installing it locally:
 
 ```bash
-docker run -it --rm \
-  -p 8000:8000 \
-  -v /path/to/your/repo:/workspace:ro \
-  ghcr.io/not-that-deep-26/karuvi:latest \
-  /workspace [options]
+docker run -it --rm -p 8000:8000 -v $(pwd):/workspace:ro ghcr.io/not-that-deep-26/karuvi:latest /workspace
 ```
 
-## Basic Usage
+## Usage
 
-The canonical interface is `karuvi <repository-path> [options]`.
+Navigate to your Python project and run:
 
 ```bash
-# Analyze current directory, export reports, and serve in browser
 karuvi .
+```
 
-# Run the interactive terminal dashboard
-karuvi /path/to/repo --explore
+**What happens?** Karuvi analyzes your codebase, generates an interactive HTML report, and opens it automatically in your browser.
 
-# Trace the blast radius of a specific function
-karuvi /path/to/repo --blast verify_token
+### Common Commands
 
-# Detect circular imports
-karuvi /path/to/repo --cycles
+```bash
+# Trace the impact (blast radius) of a specific function or class
+karuvi . --blast my_function
 
-# Generate a progressive codebase onboarding guide
-karuvi /path/to/repo --onboard --level beginner
+# Detect all circular imports in the project
+karuvi . --cycles
 
-# Launch the interactive terminal navigator
-karuvi /path/to/repo --interactive
+# Explore the architecture directly in the terminal
+karuvi . --explore
+
+# Generate an onboarding guide for new contributors
+karuvi . --onboard --level beginner
 ```
 
 ## How Repository Analysis Works
@@ -115,8 +108,8 @@ If you want to contribute to Karuvi or run it from source:
 
 ## Roadmap
 - [ ] Official PyPI / `pipx` publication.
-- [ ] WinGet and Scoop submissions for Windows.
-- [ ] Arch Linux AUR package.
+- [x] WinGet and Scoop submissions for Windows.
+- [x] Arch Linux AUR package.
 - [ ] Native Windows execution without Docker.
 
 ## Contributing

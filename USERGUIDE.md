@@ -4,60 +4,55 @@ Welcome to the official Karuvi User Guide. Karuvi is a whole-repository Python d
 
 ## 1. Installation
 
-### Linux / macOS
-Karuvi can be installed directly using Python package managers. We highly recommend using `pipx` to install it globally without conflicting with your system Python packages.
+### Linux & macOS
+The recommended way to install Karuvi natively is using [uv](https://github.com/astral-sh/uv):
 
 ```bash
-pipx install git+https://github.com/Not-That-Deep-26/karuvi.git
+uv tool install karuvi
 ```
 
-Once installed, the `karuvi` command will be available in your terminal.
+Alternatively, Arch Linux users can install it from the AUR:
+```bash
+yay -S karuvi
+```
 
 ### Windows
-Due to dependencies on complex AST parsing, Karuvi currently provides native support on Windows via a lightweight Docker wrapper.
+Karuvi provides a seamless Docker-backed launcher for Windows. You can install it easily using package managers:
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-2. Download the `karuvi.ps1` script from the [latest GitHub release](https://github.com/Not-That-Deep-26/karuvi/releases).
-3. Place `karuvi.ps1` in a directory that is on your system's `PATH`.
+**Prerequisite:** Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and ensure it is running.
 
-You can now use the `karuvi` command exactly as you would on Linux.
+**Using WinGet:**
+```powershell
+winget install not-that-deep-26.karuvi
+```
 
-## 2. First Run
+**Using Scoop:**
+```powershell
+scoop install https://raw.githubusercontent.com/Not-That-Deep-26/karuvi/main/packaging/scoop/karuvi.json
+```
 
-Let's run Karuvi on its own repository (or any Python project you have). Open your terminal and run:
+## 2. Basic Usage
+
+The simplest way to use Karuvi is to navigate to your project directory and run:
 
 ```bash
-karuvi /path/to/a/python-project
+karuvi .
+```
+
+Or provide the path to your repository:
+```bash
+karuvi /path/to/your/python-project
 ```
 
 **What happens?**
 1. Karuvi scans the directory for all `.py` files.
-2. It parses the files and resolves cross-module imports and symbols.
-3. It generates an interactive HTML report (`karuvi_atlas.html`).
-4. It starts a temporary local web server on port `8000` and opens the report in your default browser.
+2. It builds a dependency graph of imports and symbols.
+3. It generates an interactive HTML report.
+4. It starts a temporary web server (port 8000) and opens the report in your browser.
 
-To stop the web server, press `Ctrl+C` in your terminal.
+Press `Ctrl+C` in your terminal to stop the web server.
 
-## 3. Analysing a Repository
-
-The primary way to use Karuvi is to provide the path to the repository you want to analyze.
-
-**Analyze the current directory:**
-```bash
-karuvi .
-```
-
-**Analyze a specific absolute path:**
-```bash
-karuvi /home/user/projects/api-backend
-```
-
-**Windows equivalents:**
-Even though Windows uses a Docker wrapper behind the scenes, you use standard Windows paths:
-```powershell
-karuvi .
-karuvi C:\Projects\api-backend
-```
+*(Note for Windows users: You can use standard Windows paths like `karuvi C:\Projects\api-backend`, the Docker wrapper handles everything automatically.)*
 
 ## 4. CLI Options
 
