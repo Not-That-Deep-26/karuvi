@@ -8,6 +8,7 @@ embodying Karuvi's 6 core modes:
 3. Architecture: Discovered components, confidence scores, and architectural flows.
 4. Graph Explorer: Progressive graph disclosure, relation filters, and unrelated node greying.
 5. Code Explorer: Sourcetrail-grade side-by-side file tree and syntax-highlighted code viewer.
+
 """
 from __future__ import annotations
 
